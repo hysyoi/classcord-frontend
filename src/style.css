@@ -1,0 +1,225 @@
+@import "tailwindcss";
+
+:root {
+  /* 3874FF */
+  --brand-color: #ff667d;
+  --brand-hover: #1b7fff;
+  --brand-disabled: #255ca8;
+  --brand-alpha-10: #2d3746;
+  --brand-alpha-15: #2e3c50;
+  --brand-alpha-20: #30425a;
+  --brand-alpha-30: #324c6f;
+  --brand-alpha-40: #345683;
+  --brand-gradient: #ffb6c1;
+
+  /* 灰色背景與主版面變數 */
+  --bg-darkest: #202330; /* 側邊欄、最深背景 */
+  --bg-darker: #2b2d31; /* 頻道列表、成員名單、彈窗內容 */
+  --bg-dark: #313338; /* 聊天室主背景、主要區塊 */
+  --bg-black: #111214; /* 懸停指示卡、輸入框底色 */
+}
+
+@theme {
+  --font-sans:
+    "jf-openhuninn", "PingFang TC", "Heiti TC", "Microsoft JhengHei", system-ui,
+    -apple-system, sans-serif;
+}
+
+@font-face {
+  font-family: "jf-openhuninn";
+  src: url("./assets/jf-openhuninn-2.1.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+body {
+  font-family: var(--font-sans);
+}
+
+body.dev-show-outlines * {
+  outline: 1px solid rgba(236, 72, 153, 0.4) !important;
+}
+
+/* ================= 全域 Discord 風格滾動條 ================= */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #2e3035;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: #1a1b1e;
+  border-radius: 4px;
+  border: 1px solid transparent;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--bg-black);
+}
+
+/* ================= Discord 用戶卡片樣式 ================= */
+.user-card {
+  height: 52px;
+  background: var(--bg-darkest);
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  gap: 8px;
+  flex-shrink: 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+  box-sizing: border-box;
+}
+
+.user-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  color: white;
+  position: relative;
+  font-size: 16px;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.user-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+.user-status-dot {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: #23a55a;
+  border: 3px solid #2e2f41;
+}
+
+.user-info {
+  display: flex;
+  flex-direction: column;
+  overflow: visible; /* 允許 3D 透視深度溢出，防止文字被切除 */
+  text-align: left;
+  flex: 1;
+  min-width: 0;
+  gap: 1px;
+}
+
+.user-username {
+  font-size: 14px;
+  font-weight: 600;
+  color: #f2f3f5;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.2;
+}
+
+.user-status {
+  font-size: 13px;
+  color: #949ba4;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+/* 3D 文字翻轉容器 - 支援立體滾動 */
+.user-status-flip {
+  position: relative;
+  height: 16px;
+  line-height: 16px;
+  perspective: 150px; /* 3D 空間透視深度 */
+  perspective-origin: left center; /* 關鍵：將 3D 相機中心對準左側文字起點，呈現完美正視翻轉 */
+  cursor: pointer;
+  overflow: visible; /* 允許 3D 旋轉過程中文字在 Z 軸移動 */
+  width: 100%;
+}
+
+.user-status-flip-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.2); /* 帶有精緻彈性的 3D 翻轉動畫 */
+  transform-origin: 50% 50% 0px; /* Z 軸置於 0px，使正面與底面旋轉時半徑完全相同，絕不上移 */
+}
+
+/* 當 hover 在整個使用者頭像資訊區區塊 (user-card-avatar-info) 時觸發翻轉 */
+.user-card-avatar-info:hover .user-status-flip-inner {
+  transform: rotateX(90deg); /* 向上翻轉 90 度 (使下底面轉到正面) */
+}
+
+.status-front,
+.status-back {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  backface-visibility: hidden;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+}
+
+.status-front {
+  color: #949ba4; /* 在線的經典綠色 */
+  font-weight: 500;
+  transform: rotateX(0deg) translateZ(8px); /* 向前移 8px 作為 3D 面 */
+}
+
+.status-back {
+  color: #949ba4; /* 信箱使用舒服的白灰色 */
+  font-size: 12px; /* 信箱通常較長，字體稍小更精緻 */
+  transform: rotateX(-90deg) translateZ(8px); /* 改為 -90deg，作為底面 */
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+
+.user-controls {
+  display: flex;
+  gap: 2px;
+  align-items: center;
+  color: #b5bac1;
+}
+
+.control-btn {
+  background: none;
+  border: none;
+  padding: 4px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  color: #b5bac1;
+  transition:
+    background 0.15s,
+    color 0.15s;
+  width: 30px;
+  height: 30px;
+  box-sizing: border-box;
+}
+
+.control-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
+/* 移除所有 iframe (例如 Cloudflare Turnstile) 預設邊框 */
+iframe {
+  border: none !important;
+}

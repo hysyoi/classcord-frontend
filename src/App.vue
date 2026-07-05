@@ -1,10 +1,23 @@
 <template>
-  <div class="hello">
-    <h1>hello vue3!</h1>
-  </div>
+  <router-view />
+  <DevTools />
 </template>
 
-<script lang='ts' setup>
+<script lang="ts" setup>
+import DevTools from "@/components/DevTools.vue";
+// 根組件，所有子頁面透過 Vue Router 渲染
 </script>
 
-<style scoped></style>
+<style>
+/* 全域重設，確保滿版 */
+html,
+body,
+#app {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg-darkest);
+}
+</style>
