@@ -6,15 +6,39 @@
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc -b && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "generate-api": "openapi-ts"
   },
   "dependencies": {
-    "vue": "^3.5.13"
+    "@lordicon/element": "^2.3.1",
+    "@lucide/vue": "^1.23.0",
+    "@stomp/stompjs": "^7.3.0",
+    "@vueuse/core": "^14.3.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lottie-web": "^5.13.0",
+    "lucide-vue-next": "^1.0.0",
+    "marked": "^18.0.5",
+    "pinia": "^3.0.4",
+    "radix-vue": "^1.9.17",
+    "reka-ui": "^2.10.1",
+    "splitpanes": "^4.1.2",
+    "tailwind-merge": "^3.6.0",
+    "tailwindcss-animate": "^1.0.7",
+    "vue": "^3.5.13",
+    "vue-router": "^4.6.4"
   },
   "devDependencies": {
+    "@hey-api/openapi-ts": "^0.97.3",
+    "@iconify/json": "^2.2.495",
+    "@tailwindcss/vite": "^4.3.2",
+    "@types/node": "^26.1.0",
     "@vitejs/plugin-vue": "^5.2.3",
     "@vue/tsconfig": "^0.7.0",
+    "prettier": "3.9.4",
+    "tailwindcss": "^4.3.2",
     "typescript": "~5.8.3",
+    "unplugin-icons": "^23.0.1",
     "vite": "^6.3.5",
     "vite-plugin-vue-setup-extend": "^0.4.0",
     "vue-tsc": "^2.2.8"
