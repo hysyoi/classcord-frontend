@@ -68,7 +68,7 @@
         </div>
       </div>
       <div class="user-controls">
-        <button class="control-btn" title="登出" @click="handleLogout">
+        <button class="control-btn" title="設定" @click.stop="toggleUserMenu">
           <lord-icon
             src="https://cdn.lordicon.com/umuwriak.json"
             trigger="hover"
@@ -78,6 +78,17 @@
           >
           </lord-icon>
         </button>
+
+        <!-- 使用者設定下拉選單 -->
+        <div v-if="showUserMenu" class="user-dropdown-menu" @click.stop>
+          <div class="menu-item user-info-item">
+            <div class="menu-user-email">{{ store.currentUser?.email }}</div>
+          </div>
+          <div class="menu-divider"></div>
+          <button class="menu-item logout-item" @click="handleLogout">
+            <span class="logout-icon">🚪</span> 登出
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -92,9 +103,11 @@ import { useAppStore } from "@/store/useAppStore";
 import { useAuthStore } from "@/store/useAuthStore";
 import { Splitpanes, Pane } from "splitpanes";
 import "splitpanes/dist/splitpanes.css";
+import { useRouter } from "vue-router";
 
 const store = useAppStore();
 const authStore = useAuthStore();
+const router = useRouter();
 
 const sidebarWidth = ref(240);
 const windowWidth = ref(
@@ -141,14 +154,26 @@ const avatarColor = computed(() => {
     : "var(--brand-color)";
 });
 
-const handleLogout = () => {
-  authStore.logout();
+const showUserMenu = ref(false);
+
+const toggleUserMenu = () => {
+  showUserMenu.value = !showUserMenu.value;
+};
+
+const closeUserMenu = () => {
+  showUserMenu.value = false;
+};
+
+const handleLogout = async () => {
+  await authStore.logout();
+  router.push("/login");
 };
 
 onMounted(() => {
   store.fetchServers();
   store.fetchCurrentUserProfile();
   window.addEventListener("resize", handleWindowResize);
+  window.addEventListener("click", closeUserMenu);
   // Measure pane size after rendering completes
   setTimeout(() => {
     handlePaneResize();
@@ -157,6 +182,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   window.removeEventListener("resize", handleWindowResize);
+  window.removeEventListener("click", closeUserMenu);
 });
 </script>
 
@@ -340,5 +366,92 @@ onUnmounted(() => {
 .main-splitpanes :deep(.splitpanes__splitter:hover::after),
 .main-splitpanes :deep(.splitpanes__splitter:active::after) {
   opacity: 1;
+}
+
+.control-btn :deep(lord-icon) {
+  pointer-events: none;
+}
+
+/* 使用者下拉選單樣式 */
+.user-dropdown-menu {
+  position: absolute;
+  bottom: 50px;
+  right: 0;
+  width: 160px;
+  background: rgba(30, 31, 34, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+  padding: 6px 0;
+  z-index: 200;
+  backdrop-filter: blur(8px);
+  display: flex;
+  flex-direction: column;
+  animation: popIn 0.15s ease-out;
+}
+
+@keyframes popIn {
+  from {
+    transform: translateY(10px) scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+.menu-item {
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 8px 12px;
+  text-align: left;
+  color: #dbdee1;
+  font-size: 13px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: background 0.15s, color 0.15s;
+  box-sizing: border-box;
+}
+
+.menu-item:hover {
+  background: var(--brand-color);
+  color: white;
+}
+
+.user-info-item {
+  cursor: default;
+  padding: 6px 12px;
+}
+
+.user-info-item:hover {
+  background: none;
+}
+
+.menu-user-email {
+  font-size: 11px;
+  color: #949ba4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  width: 100%;
+}
+
+.menu-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.08);
+  margin: 4px 0;
+}
+
+.logout-item {
+  color: #f23f43;
+}
+
+.logout-item:hover {
+  background: #f23f43;
+  color: white;
 }
 </style>
