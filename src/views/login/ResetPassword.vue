@@ -165,11 +165,17 @@ const validate = () => {
   errors.value.newPassword = "";
   errors.value.confirmPassword = "";
 
+  const passwordRegex =
+    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^a-zA-Z0-9]).{8,}$/;
   if (!newPassword.value) {
     errors.value.newPassword = "新密碼不能為空";
     isValid = false;
   } else if (newPassword.value.length < 8 || newPassword.value.length > 100) {
     errors.value.newPassword = "新密碼長度需介於 8~100 字元";
+    isValid = false;
+  } else if (!passwordRegex.test(newPassword.value)) {
+    errors.value.newPassword =
+      "密碼必須包含至少一個大寫字母、一個小寫字母、一個數字和一個特殊符號";
     isValid = false;
   }
 

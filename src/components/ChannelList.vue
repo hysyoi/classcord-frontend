@@ -107,7 +107,9 @@
         <div class="modal-card">
           <div class="modal-header">
             <h3>建立頻道</h3>
-            <button class="close-btn" @click="closeModal">&times;</button>
+            <button class="close-btn" @click="closeModal">
+              <CloseRoundedIcon />
+            </button>
           </div>
 
           <div class="modal-content">
@@ -136,7 +138,7 @@
                 >
                   <input type="radio" v-model="channelType" value="GENERAL" />
                   <div class="radio-text">
-                    <div class="radio-title">討論頻道 (GENERAL)</div>
+                    <div class="radio-title">討論頻道</div>
                     <div class="radio-desc">
                       文字訊息討論、閒聊與一般問題提問
                     </div>
@@ -148,9 +150,9 @@
                 >
                   <input type="radio" v-model="channelType" value="MATERIAL" />
                   <div class="radio-text">
-                    <div class="radio-title">教材與資源 (MATERIAL)</div>
+                    <div class="radio-title">教材與資源</div>
                     <div class="radio-desc">
-                      存放簡報、程式碼、作業連結與參考資源
+                      存放學習材料、程式碼、作業連結與參考資源
                     </div>
                   </div>
                 </label>
@@ -172,51 +174,56 @@
       </div>
     </Teleport>
 
-    <!-- 邀請連結 玻璃化彈窗 -->
+    <!-- 邀請連結 獨立彈窗 -->
     <Teleport to="body">
       <div
         v-if="showInviteModal"
-        class="modal-backdrop"
+        class="invite-backdrop"
         @click.self="closeInviteModal"
       >
-        <div class="modal-card max-w-[400px]">
-          <div class="modal-header">
+        <div class="invite-card">
+          <div class="invite-header">
             <h3>班級邀請連結</h3>
-            <button class="close-btn" @click="closeInviteModal">&times;</button>
+            <button class="invite-close-btn" @click="closeInviteModal">
+              <CloseRoundedIcon />
+            </button>
           </div>
 
-          <div class="modal-content">
-            <p class="form-tip mb-3">
+          <div class="invite-content">
+            <p class="invite-tip mb-3">
               您可以將此連結或 ID
               分送給學生，他們點擊或輸入後即可直接加入本班級！
             </p>
 
-            <div class="form-group">
-              <label class="form-label">班級邀請連結</label>
-              <div class="copy-input-group">
+            <div class="invite-form-group">
+              <label class="invite-form-label">班級邀請連結</label>
+              <div class="invite-copy-group">
                 <input
                   type="text"
                   :value="inviteLink"
                   readonly
-                  class="form-input flex-1"
+                  class="invite-form-input flex-1"
                 />
-                <button class="btn-copy" @click="copyText(inviteLink, 'link')">
+                <button
+                  class="invite-btn-copy"
+                  @click="copyText(inviteLink, 'link')"
+                >
                   {{ copiedType === "link" ? "已複製！" : "複製" }}
                 </button>
               </div>
             </div>
 
-            <div class="form-group mt-4">
-              <label class="form-label">班級 ID (UUID)</label>
-              <div class="copy-input-group">
+            <div class="invite-form-group mt-4">
+              <label class="invite-form-label">班級 ID (UUID)</label>
+              <div class="invite-copy-group">
                 <input
                   type="text"
                   :value="store.activeServerId || ''"
                   readonly
-                  class="form-input flex-1"
+                  class="invite-form-input flex-1"
                 />
                 <button
-                  class="btn-copy"
+                  class="invite-btn-copy"
                   @click="copyText(store.activeServerId || '', 'id')"
                 >
                   {{ copiedType === "id" ? "已複製！" : "複製" }}
@@ -225,9 +232,9 @@
             </div>
           </div>
 
-          <div class="modal-footer">
-            <button class="btn-cancel" @click="closeInviteModal">關閉</button>
-          </div>
+          <!--          <div class="invite-footer">-->
+          <!--            <button class="invite-btn-close" @click="closeInviteModal">關閉</button>-->
+          <!--          </div>-->
         </div>
       </div>
     </Teleport>
@@ -254,6 +261,7 @@ import TagRoundedIcon from "~icons/material-symbols/tag-rounded";
 import ChevronBoldIcon from "~icons/glyphs/chevron-bold";
 import GroupAddRoundedIcon from "~icons/material-symbols/group-add-rounded";
 import RoundPlusIcon from "~icons/ic/round-plus";
+import CloseRoundedIcon from "~icons/material-symbols/close-rounded";
 
 const store = useAppStore();
 
@@ -431,7 +439,8 @@ const handleCreateChannel = async () => {
 
 <style scoped>
 .channel-list {
-  background: var(--bg-darker);
+  //background: var(--bg-darker);
+  background: var(--bg-main-dark);
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -451,10 +460,10 @@ const handleCreateChannel = async () => {
   height: 48px;
   box-sizing: border-box;
   /*padding: 0 8px;*/
-  color: white;
+  color: #ffffff;
   font-weight: 600;
   font-size: 16px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid var(--bg-main-dark-border);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -482,13 +491,13 @@ const handleCreateChannel = async () => {
 }
 
 .server-name-text:hover {
-  background: #404249;
+  background: var(--bg-main-dark-hover);
 }
 
 .invite-header-btn {
   background: none;
   border: none;
-  color: #949ba4;
+  /*color: #949ba4;*/
   font-size: 16px;
   cursor: pointer;
   /* opacity: 0.6; */
@@ -504,7 +513,7 @@ const handleCreateChannel = async () => {
 }
 
 .invite-header-btn:hover {
-  background: #404249;
+  background: var(--bg-main-dark-hover);
   /* opacity: 1; */
   /* transform: scale(1.15); */
   /* color: var(--brand-color); */
@@ -513,7 +522,7 @@ const handleCreateChannel = async () => {
 .add-channel-header-btn {
   background: none;
   border: none;
-  color: #949ba4;
+  color: var(--bg-main-dark-text-muted);
   font-size: 20px;
   cursor: pointer;
   padding-right: 12px;
@@ -522,7 +531,7 @@ const handleCreateChannel = async () => {
 }
 
 .add-channel-header-btn:hover {
-  color: #dbdee1;
+  color: #ffffff;
 }
 
 .empty-state {
@@ -536,13 +545,13 @@ const handleCreateChannel = async () => {
 }
 
 .empty-title {
-  color: #dbdee1;
+  color: #ffffff;
   font-size: 13px;
   font-weight: 500;
 }
 
 .empty-desc {
-  color: #949ba4;
+  color: var(--bg-main-dark-text-muted);
   font-size: 11px;
   line-height: 1.5;
   padding: 0 8px;
@@ -560,7 +569,7 @@ const handleCreateChannel = async () => {
 }
 
 .category-name {
-  color: #949ba4;
+  color: var(--bg-main-dark-text-muted);
   font-size: 14px;
   font-weight: 600;
   text-transform: uppercase;
@@ -593,7 +602,7 @@ const handleCreateChannel = async () => {
 .add-channel-icon {
   background: none;
   border: none;
-  color: #949ba4;
+  color: var(--bg-main-dark-text-muted);
   font-size: 15px;
   cursor: pointer;
   line-height: 1;
@@ -602,7 +611,7 @@ const handleCreateChannel = async () => {
 }
 
 .add-channel-icon:hover {
-  color: #dbdee1;
+  color: #ffffff;
 }
 
 .channel-item {
@@ -612,7 +621,7 @@ const handleCreateChannel = async () => {
   padding: 3px 10px;
   margin: 2px 8px 2px 5px;
   border-radius: 8px;
-  color: #949ba4;
+  color: var(--bg-main-dark-text-muted);
   cursor: pointer;
   font-size: 16px;
   transition:
@@ -622,12 +631,12 @@ const handleCreateChannel = async () => {
 
 .channel-item:hover,
 .channel-item.active {
-  background: #404249;
+  background: var(--bg-main-dark-hover);
   color: #ffffff;
 }
 
 .channel-item.has-unread {
-  color: #dbdee1;
+  color: var(--bg-main-dark-text-muted);
   font-weight: 600;
 }
 
@@ -646,21 +655,21 @@ const handleCreateChannel = async () => {
 }
 
 .unread-badge {
-  background-color: #f23f42;
-  color: white;
-  font-size: 10px;
+  background-color: var(--bg-main-dark-hover);
+  color: #ffffff;
+  font-size: 12px;
   font-weight: 700;
-  padding: 2px 6px;
-  border-radius: 8px;
+  padding: 4px 4px;
+  border-radius: 4px;
   line-height: 1;
   min-width: 16px;
   text-align: center;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  /*box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);*/
 }
 
 .hash {
   font-size: 18px;
-  color: #6b6f78;
+  color: var(--bg-main-dark-text-muted);
   transition: color 0.15s;
 }
 
@@ -676,7 +685,7 @@ const handleCreateChannel = async () => {
   width: 100vw;
   height: 100vh;
   background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(8px);
+  /*backdrop-filter: blur(8px);*/
   z-index: 1000;
   display: flex;
   align-items: center;
@@ -686,10 +695,10 @@ const handleCreateChannel = async () => {
 .modal-card {
   width: 100%;
   max-width: 440px;
-  background: rgba(43, 45, 49, 0.95);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--bg-main);
+  border: 1px solid var(--bg-main-border);
   border-radius: 12px;
-  box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.5);
+  /*box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.5);*/
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -716,40 +725,44 @@ const handleCreateChannel = async () => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  /*border-bottom: 1px solid rgba(255, 255, 255, 0.05);*/
 }
 
 .modal-header h3 {
   color: #f2f3f5;
-  font-size: 18px;
+  font-size: 22px;
   font-weight: 600;
 }
 
 .close-btn {
   background: none;
+  margin: -10px -15px 0 0;
+  padding: 5px;
+  border-radius: 6px;
   border: none;
-  color: #949ba4;
+  color: var(--bg-main-text-muted);
   font-size: 24px;
   cursor: pointer;
   transition: color 0.15s;
 }
 
 .close-btn:hover {
-  color: #dbdee1;
+  color: #ffffff;
+  background: var(--bg-main-hover-dark);
 }
 
 .modal-content {
-  padding: 24px;
+  padding: 18px 24px;
   display: flex;
   flex-direction: column;
   gap: 16px;
 }
 
 .error-banner {
-  background: rgba(242, 63, 66, 0.1);
-  border: 1px solid rgba(242, 63, 66, 0.2);
-  color: #f23f42;
-  font-size: 12px;
+  background: hsl(var(--error-base) 60% / 0.3);
+  border: 1px solid hsl(var(--error-base) 60% / 0.5);
+  color: hsl(var(--error-base) 90%);
+  font-size: 13px;
   padding: 10px 14px;
   border-radius: 6px;
   text-align: center;
@@ -762,26 +775,26 @@ const handleCreateChannel = async () => {
 }
 
 .form-label {
-  color: #b5bac1;
-  font-size: 11px;
+  color: #ffffff;
+  font-size: 16px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
 .form-input {
-  background: var(--bg-darkest);
-  border: 1px solid rgba(0, 0, 0, 0.3);
-  color: #dbdee1;
+  background: var(--bg-surface);
+  border: 1px solid var(--bg-surface-border);
+  color: #ffffff;
   padding: 10px 14px;
-  border-radius: 4px;
-  font-size: 14px;
+  border-radius: 6px;
+  font-size: 15px;
   outline: none;
   transition: border-color 0.15s;
 }
 
 .form-input:focus {
-  border-color: var(--brand-color);
+  border-color: var(--primary-lighter);
 }
 
 .copy-input-group {
@@ -794,33 +807,33 @@ const handleCreateChannel = async () => {
 }
 
 .btn-copy {
-  background: var(--brand-color);
-  color: white;
-  border: none;
-  padding: 0 16px;
-  border-radius: 4px;
-  font-size: 13px;
+  background: var(--primary);
+  border: 1px solid var(--primary-border);
+  color: #ffffff;
+  padding: 8px 30px;
+  border-radius: 6px;
+  font-size: 15px;
   font-weight: 500;
   cursor: pointer;
   transition: background 0.15s;
 }
 
 .btn-copy:hover {
-  background: var(--brand-hover);
+  background: var(--primary-muted);
 }
 
 .radio-group {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
 }
 
 .radio-option {
   display: flex;
   align-items: flex-start;
   gap: 12px;
-  background: rgba(30, 31, 34, 0.4);
-  border: 1px solid rgba(255, 255, 255, 0.03);
+  background: none;
+  border: 1px solid var(--bg-main-border);
   padding: 12px;
   border-radius: 6px;
   cursor: pointer;
@@ -830,16 +843,16 @@ const handleCreateChannel = async () => {
 }
 
 .radio-option:hover {
-  background: rgba(30, 31, 34, 0.7);
+  background: var(--bg-main-hover-dark);
 }
 
 .radio-option.active {
-  background: var(--brand-alpha-15);
-  border-color: var(--brand-color);
+  background: var(--bg-main-hover-dark);
+  border-color: #ffffff;
 }
 
 .radio-option input[type="radio"] {
-  accent-color: var(--brand-color);
+  accent-color: var(--primary);
   margin-top: 3px;
   cursor: pointer;
 }
@@ -851,60 +864,63 @@ const handleCreateChannel = async () => {
 }
 
 .radio-title {
-  color: #f2f3f5;
-  font-size: 13px;
+  color: #ffffff;
+  font-size: 15px;
   font-weight: 600;
 }
 
 .radio-desc {
   color: #949ba4;
-  font-size: 11px;
-  line-height: 1.4;
+  font-size: 12px;
+  line-height: 1.2;
 }
 
 .modal-footer {
   padding: 16px 24px;
-  background: var(--bg-darker);
+  background: var(--bg-main);
   display: flex;
   justify-content: flex-end;
   gap: 12px;
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .btn-cancel {
+  width: 100%;
   background: none;
-  border: none;
-  color: #f2f3f5;
-  font-size: 14px;
+  border: 1px solid var(--bg-main-border);
+  color: var(--bg-main-text-muted);
+  font-size: 15px;
   font-weight: 500;
-  padding: 8px 16px;
+  padding: 8px 30px;
   cursor: pointer;
-  border-radius: 4px;
+  border-radius: 6px;
   transition: background 0.15s;
 }
 
 .btn-cancel:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--bg-main-hover-dark);
+  color: #ffffff;
 }
 
 .btn-submit {
-  background: var(--brand-color);
-  border: none;
-  color: white;
-  font-size: 14px;
+  width: 100%;
+  background: var(--primary);
+  border: 1px solid var(--primary-border);
+  color: #ffffff;
+  font-size: 15px;
   font-weight: 500;
-  padding: 8px 20px;
+  padding: 8px 30px;
   cursor: pointer;
-  border-radius: 4px;
+  border-radius: 6px;
   transition: background 0.15s;
 }
 
 .btn-submit:hover {
-  background: var(--brand-hover);
+  background: var(--primary-muted);
 }
 
 .btn-submit:disabled {
-  background: var(--brand-disabled);
+  background: var(--primary-disabled);
+  border: 1px solid var(--primary-disabled-border);
   cursor: not-allowed;
 }
 
@@ -915,14 +931,174 @@ const handleCreateChannel = async () => {
 .mb-3 {
   margin-bottom: 12px;
 }
+
+/* ==========================================================================
+   班級邀請連結彈窗專屬樣式 (獨立出來方便微調)
+   ========================================================================== */
+
+.invite-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.6);
+  /* backdrop-filter: blur(8px); 可以依需求啟用毛玻璃效果 */
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.invite-card {
+  width: 100%;
+  max-width: 400px;
+  background: var(--bg-main);
+  border: 1px solid var(--bg-main-border);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: inviteSlideUp 0.25s ease-out;
+}
+
+@keyframes inviteSlideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.invite-header {
+  padding: 18px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.invite-header h3 {
+  color: #f2f3f5;
+  font-size: 22px;
+  font-weight: 600;
+}
+
+.invite-close-btn {
+  background: none;
+  margin: -10px -15px 0 0;
+  padding: 5px;
+  border-radius: 6px;
+  border: none;
+  color: var(--bg-main-text-muted);
+  font-size: 24px;
+  cursor: pointer;
+  transition: color 0.15s;
+}
+
+.invite-close-btn:hover {
+  color: #ffffff;
+  background: var(--bg-main-hover-dark);
+}
+
+.invite-content {
+  padding: 18px 24px 22px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.invite-tip {
+  color: var(--bg-main-text-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.invite-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.invite-form-label {
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.invite-form-input {
+  background: var(--bg-surface);
+  border: 1px solid var(--bg-surface-border);
+  color: #ffffff;
+  padding: 10px 14px;
+  border-radius: 6px;
+  font-size: 15px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.invite-form-input:focus {
+  border-color: var(--primary-lighter);
+}
+
+.invite-copy-group {
+  display: flex;
+  gap: 8px;
+}
+
+.invite-btn-copy {
+  background: var(--primary);
+  border: 1px solid var(--primary-border);
+  color: #ffffff;
+  padding: 8px 30px;
+  border-radius: 6px;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.invite-btn-copy:hover {
+  background: var(--primary-muted);
+}
+
+.invite-footer {
+  padding: 16px 24px;
+  background: var(--bg-main);
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.invite-btn-close {
+  width: 100%;
+  background: none;
+  border: 1px solid var(--bg-main-border);
+  color: var(--bg-main-text-muted);
+  font-size: 15px;
+  font-weight: 500;
+  padding: 8px 30px;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background 0.15s;
+}
+
+.invite-btn-close:hover {
+  background: var(--bg-main-hover-dark);
+  color: #ffffff;
+}
 </style>
 
 <style>
 /* 全域樣式 - 用於 Teleport 到 body 的 Tooltip */
 .global-custom-tooltip {
   position: fixed; /* 改為 fixed 定位，使其以 body 視窗為基準 */
-  background: #414249;
-  color: #f2f3f5;
+  background: var(--bg-main);
+  color: #ffffff;
   padding: 5px 9px;
   border-radius: 7px;
   font-size: 15px;
@@ -933,7 +1109,7 @@ const handleCreateChannel = async () => {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   opacity: 0;
   z-index: 100000; /* 極高的 z-index，保證蓋在所有網頁內容之上 */
-  border: 1px solid #505059; /* 與 server-tooltip 邊框色一致 */
+  border: 1px solid var(--bg-main-border); /* 與 server-tooltip 邊框色一致 */
   transition:
     opacity 0.15s ease,
     transform 0.15s ease;

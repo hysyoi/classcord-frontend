@@ -81,7 +81,7 @@ function mapMember(m: any, defaultColor: string) {
   width: 265px;
   flex-shrink: 0;
   box-sizing: border-box;
-  background: var(--bg-dark);
+  background: var(--bg-main);
   padding: 16px 8px;
   overflow-y: auto;
   height: 100%;

@@ -1,6 +1,76 @@
 @import "tailwindcss";
 
 :root {
+  --bg-main-base: 220 7%;
+  --bg-main: hsl(var(--bg-main-base) 22%);
+  --bg-main-border: hsl(var(--bg-main-base) 28%);
+
+  --bg-main-light: hsl(var(--bg-main-base) 65%);
+
+  --bg-main-text-muted: hsl(var(--bg-main-base) 72%);
+  --bg-main-hover: hsl(var(--bg-main-base) 34%);
+  --bg-main-hover-dark: hsl(var(--bg-main-base) 30%);
+  --bg-main-hover-darker: hsl(var(--bg-main-base) 27%);
+
+  --bg-main-dark-text-muted: hsl(var(--bg-main-base) 72%);
+  --bg-main-dark-text-muted-darker: hsl(var(--bg-main-base) 62%);
+  --bg-main-dark: hsl(var(--bg-main-base) 18%);
+  --bg-main-dark-border: hsl(var(--bg-main-base) 24%);
+  --bg-main-dark-hover: hsl(var(--bg-main-base) 28%);
+
+  --bg-surface-base: 229 20%;
+  --bg-surface: hsl(var(--bg-surface-base) 16%);
+  --bg-surface-hover: hsl(var(--bg-surface-base) 30%);
+  --bg-surface-border: hsl(var(--bg-surface-base) 26%);
+  --bg-surface-text-muted: hsl(var(--bg-surface-base) 76%);
+  --bg-surface-text-muted-dark: hsl(var(--bg-surface-base) 56%);
+
+  --bg-surface-light: hsl(var(--bg-surface-base) 21%);
+  --bg-surface-light-border: hsl(var(--bg-surface-base) 31%);
+  --bg-surface-light-text-muted: hsl(var(--bg-surface-base) 91%);
+
+  --bg-surface-lighter: hsl(var(--bg-surface-base) 81%);
+
+  --primary-base: 351 100%;
+  --primary: hsl(var(--primary-base) 70%);
+  --primary-border: hsl(var(--primary-base) 75%);
+  --primary-light: hsl(var(--primary-base) 80%);
+  --primary-lighter: hsl(var(--primary-base) 90%);
+
+  --primary-muted-base: 351 70%;
+  --primary-muted: hsl(var(--primary-muted-base) 62%);
+  --primary-disabled: hsl(var(--primary-muted-base) 72%);
+  --primary-disabled-border: hsl(var(--primary-muted-base) 77%);
+
+  --secondary-base: 229 40%;
+  --secondary: hsl(var(--secondary-base) 80%);
+  --secondary-light: hsl(var(--secondary-base) 80%);
+
+  --text-muted: hsl(var(--bg-main-base) 80%);
+
+  --error-base: 360 85%;
+  --error: hsl(var(--error-base) 60%);
+  --error-hover: hsl(var(--error-base) 50%); /* Hover 一律減明度變暗 */
+
+  /*--error-bg-subtle: hsl(var(--error-base) 80%);*/
+
+  /* 錯誤提示框的邊框 */
+  --error-border: hsl(var(--error-base) 30%);
+
+  --success-base: 120 100%;
+  --success: hsl(var(--success-base) 60%);
+  --success-hover: hsl(var(--success-base) 50%);
+
+  --other-color-1-base: 177 42%; /* 67 */
+  --other-color-1: hsl(var(--other-color-1-base) 50%);
+
+  --other-color-2-base: 171 100%; /* 61 */
+  --other-color-2: hsl(var(--other-color-2-base) 85%);
+
+  --other-color-3-base: 168 68%; /* 45 */
+  --other-color-3: hsl(var(--other-color-3-base) 45%);
+  --other-color-3-hover: hsl(var(--other-color-3-base) 40%);
+
   /* 3874FF */
   --brand-color: #ff667d;
   --brand-hover: #1b7fff;
@@ -13,10 +83,14 @@
   --brand-gradient: #ffb6c1;
 
   /* 灰色背景與主版面變數 */
-  --bg-darkest: #202330; /* 側邊欄、最深背景 */
-  --bg-darker: #2b2d31; /* 頻道列表、成員名單、彈窗內容 */
-  --bg-dark: #313338; /* 聊天室主背景、主要區塊 */
-  --bg-black: #111214; /* 懸停指示卡、輸入框底色 */
+  --bg-darkest: #202330;
+  /* 側邊欄、最深背景 */
+  --bg-darker: #2b2d31;
+  /* 頻道列表、成員名單、彈窗內容 */
+  --bg-dark: #313338;
+  /* 聊天室主背景、主要區塊 */
+  --bg-black: #111214;
+  /* 懸停指示卡、輸入框底色 */
 }
 
 @theme {
@@ -110,7 +184,8 @@ body.dev-show-outlines * {
 .user-info {
   display: flex;
   flex-direction: column;
-  overflow: visible; /* 允許 3D 透視深度溢出，防止文字被切除 */
+  overflow: visible;
+  /* 允許 3D 透視深度溢出，防止文字被切除 */
   text-align: left;
   flex: 1;
   min-width: 0;
@@ -139,10 +214,13 @@ body.dev-show-outlines * {
   position: relative;
   height: 16px;
   line-height: 16px;
-  perspective: 150px; /* 3D 空間透視深度 */
-  perspective-origin: left center; /* 關鍵：將 3D 相機中心對準左側文字起點，呈現完美正視翻轉 */
+  perspective: 150px;
+  /* 3D 空間透視深度 */
+  perspective-origin: left center;
+  /* 關鍵：將 3D 相機中心對準左側文字起點，呈現完美正視翻轉 */
   cursor: pointer;
-  overflow: visible; /* 允許 3D 旋轉過程中文字在 Z 軸移動 */
+  overflow: visible;
+  /* 允許 3D 旋轉過程中文字在 Z 軸移動 */
   width: 100%;
 }
 
@@ -151,13 +229,16 @@ body.dev-show-outlines * {
   width: 100%;
   height: 100%;
   transform-style: preserve-3d;
-  transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.2); /* 帶有精緻彈性的 3D 翻轉動畫 */
-  transform-origin: 50% 50% 0px; /* Z 軸置於 0px，使正面與底面旋轉時半徑完全相同，絕不上移 */
+  transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.2);
+  /* 帶有精緻彈性的 3D 翻轉動畫 */
+  transform-origin: 50% 50% 0px;
+  /* Z 軸置於 0px，使正面與底面旋轉時半徑完全相同，絕不上移 */
 }
 
 /* 當 hover 在整個使用者頭像資訊區區塊 (user-card-avatar-info) 時觸發翻轉 */
 .user-card-avatar-info:hover .user-status-flip-inner {
-  transform: rotateX(90deg); /* 向上翻轉 90 度 (使下底面轉到正面) */
+  transform: rotateX(90deg);
+  /* 向上翻轉 90 度 (使下底面轉到正面) */
 }
 
 .status-front,
@@ -175,15 +256,20 @@ body.dev-show-outlines * {
 }
 
 .status-front {
-  color: #949ba4; /* 在線的經典綠色 */
+  color: #949ba4;
+  /* 在線的經典綠色 */
   font-weight: 500;
-  transform: rotateX(0deg) translateZ(8px); /* 向前移 8px 作為 3D 面 */
+  transform: rotateX(0deg) translateZ(8px);
+  /* 向前移 8px 作為 3D 面 */
 }
 
 .status-back {
-  color: #949ba4; /* 信箱使用舒服的白灰色 */
-  font-size: 12px; /* 信箱通常較長，字體稍小更精緻 */
-  transform: rotateX(-90deg) translateZ(8px); /* 改為 -90deg，作為底面 */
+  color: #949ba4;
+  /* 信箱使用舒服的白灰色 */
+  font-size: 12px;
+  /* 信箱通常較長，字體稍小更精緻 */
+  transform: rotateX(-90deg) translateZ(8px);
+  /* 改為 -90deg，作為底面 */
   text-overflow: ellipsis;
   overflow: hidden;
 }

@@ -972,8 +972,11 @@ onMounted(() => {
 }
 
 .bot-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   background: var(--brand-alpha-15);
-  color: var(--brand-color);
+  color: var(--primary-lighter);
   font-size: 13px;
   font-weight: 600;
   padding: 2px 8px;
@@ -1518,8 +1521,8 @@ onMounted(() => {
 
 .msg-avatar.model,
 .msg-avatar.assistant {
-  background: var(--bg-darker);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--bg-surface);
+  border: 1px solid var(--bg-main-dark-border);
 }
 
 .msg-avatar .avatar-img {

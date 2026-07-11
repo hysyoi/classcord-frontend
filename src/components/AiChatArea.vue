@@ -3,7 +3,7 @@
     <!-- 頂部標頭 -->
     <div class="chat-header">
       <div class="header-left">
-        <span class="bot-badge">🤖 AI 助教</span>
+        <span class="bot-badge"><AiFillIcon /> AI 助教</span>
         <span class="header-divider">/</span>
         <span class="file-name" :title="store.aiMaterial?.originalName">
           {{ store.aiMaterial?.originalName }}
@@ -26,7 +26,7 @@
             @click="exitQuiz"
             title="退出當前測驗"
           >
-            🚪 退出測驗
+            <DoorIcon />退出測驗
           </button>
         </template>
         <!-- 狀態 3：一般狀態，未在答題中 -->
@@ -64,7 +64,7 @@
         <div v-if="activeQuiz" class="quiz-container">
           <div class="quiz-card">
             <div class="quiz-card-header">
-              <span class="quiz-badge">📝 教材測驗進行中</span>
+              <span class="quiz-badge"><PaperLineIcon />教材測驗進行中</span>
               <span class="quiz-progress"
                 >第 {{ currentQuestionIndex + 1 }} /
                 {{ activeQuiz.questions?.length }} 題</span
@@ -137,7 +137,7 @@
                 :disabled="!hasAnsweredCurrent || isSubmittingQuiz"
                 @click="submitQuiz"
               >
-                {{ isSubmittingQuiz ? "提交批改中..." : "提交測驗 🚀" }}
+                {{ isSubmittingQuiz ? "提交批改中..." : "提交測驗" }}
               </button>
             </div>
           </div>
@@ -518,6 +518,7 @@
 
           <!-- 底部輸入框 (Gemini 膠囊式設計) -->
           <div class="chat-input-area">
+            <!--            <div class="input-tip">AI 可能會出錯，請考慮核對重要資訊。</div>-->
             <div class="pill-input-wrapper">
               <textarea
                 v-model="inputText"
@@ -532,10 +533,9 @@
                 @click="handleSend"
                 title="發送訊息"
               >
-                ➔
+                <SendRoundedIcon />
               </button>
             </div>
-            <div class="input-tip">AI 可能會出錯，請考慮核對重要資訊。</div>
           </div>
         </div>
       </div>
@@ -596,6 +596,10 @@ import { ref, watch, nextTick, onMounted, computed, onUnmounted } from "vue";
 import { useAppStore } from "../store/useAppStore";
 import MemberList from "./MemberList.vue";
 import { marked } from "marked";
+import AiFillIcon from "~icons/mingcute/ai-fill";
+import PaperLineIcon from "~icons/mingcute/paper-line";
+import DoorIcon from "~icons/akar-icons/door";
+import SendRoundedIcon from "~icons/material-symbols/send-rounded";
 
 const store = useAppStore();
 const inputText = ref("");
@@ -1023,7 +1027,7 @@ onUnmounted(() => {
 <style scoped>
 .ai-chat-area {
   flex: 1;
-  background: var(--bg-dark);
+  background: var(--bg-main);
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -1042,8 +1046,8 @@ onUnmounted(() => {
   height: 48px;
   box-sizing: border-box;
   padding: 0 16px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  background: var(--bg-dark);
+  border-bottom: 1px solid var(--bg-main-border);
+  background: var(--bg-main);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1058,11 +1062,15 @@ onUnmounted(() => {
 }
 
 .bot-badge {
-  background: var(--brand-alpha-15);
-  color: var(--brand-color);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+  background: var(--bg-surface-light);
+  color: var(--primary);
   font-size: 13px;
   font-weight: 600;
-  padding: 2px 8px;
+  padding: 4px 8px;
   border-radius: 4px;
 }
 
@@ -1072,6 +1080,9 @@ onUnmounted(() => {
 }
 
 .action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   border: none;
   font-size: 13px;
   font-weight: 600;
@@ -1088,39 +1099,41 @@ onUnmounted(() => {
 }
 
 .config-btn {
-  background: rgba(255, 255, 255, 0.08);
-  color: #dbdee1;
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: var(--bg-main);
+  color: #ffffff;
+  border: 1px solid var(--bg-main-hover);
 }
 
 .config-btn:hover {
-  background: rgba(255, 255, 255, 0.15);
+  background: var(--bg-main-hover);
 }
 
 .quiz-btn {
-  background: var(--brand-color);
-  color: white;
+  background: var(--primary);
+  color: #ffffff;
 }
 
 .quiz-btn:hover {
-  background: var(--brand-hover);
+  background: var(--primary-muted);
 }
 
 .exit-quiz-btn {
-  background: #da373c;
-  color: white;
+  border: 1px solid var(--bg-main-hover);
+  background: var(--bg-main);
+  color: var(--bg-main-text-muted);
 }
 
 .exit-quiz-btn:hover {
-  background: #a92b2f;
+  color: #ffffff;
+  background: var(--bg-main-hover);
 }
 
 .header-divider {
-  color: #4e5058;
+  color: var(--bg-main-border);
 }
 
 .file-name {
-  color: #dbdee1;
+  color: var(--bg-main-text-muted);
   font-size: 14px;
   font-weight: 500;
   overflow: hidden;
@@ -1152,6 +1165,8 @@ onUnmounted(() => {
   gap: 20px;
   scrollbar-width: auto;
   scrollbar-color: transparent transparent;
+  -webkit-mask-image: linear-gradient(to top, transparent 0%, black 20px);
+  mask-image: linear-gradient(to top, transparent 0%, black 20px);
 }
 
 /* 當有滾動或滑鼠懸停時，在 Firefox 中顯示滾動條 */
@@ -1196,14 +1211,14 @@ onUnmounted(() => {
   display: flex;
   justify-content: center;
   align-items: flex-start;
-  background: var(--bg-darker);
+  background: var(--bg-surface);
 }
 
 .quiz-card {
   width: 100%;
   max-width: 680px;
-  background: var(--bg-dark);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: var(--bg-main);
+  border: 1px solid var(--bg-main-border);
   border-radius: 12px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
   display: flex;
@@ -1213,21 +1228,25 @@ onUnmounted(() => {
 
 .quiz-card-header {
   padding: 16px 20px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid var(--bg-main-border);
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
 .quiz-badge {
+  align-items: center;
+  display: inline-flex;
+  white-space: nowrap;
+  gap: 4px;
   font-weight: 600;
-  font-size: 14px;
-  color: var(--brand-color);
+  font-size: 16px;
+  color: var(--primary);
 }
 
 .quiz-progress {
-  font-size: 13px;
-  color: #949ba4;
+  font-size: 16px;
+  color: var(--bg-main-text-muted);
 }
 
 .question-body {
@@ -1237,18 +1256,19 @@ onUnmounted(() => {
 
 .question-type-tag {
   display: inline-block;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
-  background: var(--brand-alpha-15);
-  color: var(--brand-color);
-  padding: 2px 6px;
-  border-radius: 4px;
+  background: var(--bg-surface-light);
+  color: #ffffff;
+  padding: 4px 8px;
+  border: 1px solid var(--bg-surface-light-border);
+  border-radius: 50px;
   margin-bottom: 12px;
 }
 
 .question-text {
-  color: #f2f3f5;
-  font-size: 16px;
+  color: #ffffff;
+  font-size: 16px !important;
   font-weight: 500;
   line-height: 1.5;
   margin-bottom: 24px;
@@ -1265,8 +1285,8 @@ onUnmounted(() => {
   align-items: center;
   gap: 12px;
   padding: 14px 16px;
-  background: var(--bg-darker);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: var(--bg-main-dark);
+  border: 1px solid var(--bg-main-dark-border);
   border-radius: 8px;
   cursor: pointer;
   transition:
@@ -1275,20 +1295,20 @@ onUnmounted(() => {
 }
 
 .option-card:hover {
-  background: #35373c;
+  background: var(--bg-main-dark-hover);
   border-color: rgba(255, 255, 255, 0.1);
 }
 
 .option-card.selected {
-  background: rgba(66, 148, 255, 0.08);
-  border-color: var(--brand-color);
+  background: var(--bg-surface-light);
+  border-color: var(--primary-light);
 }
 
 .radio-indicator {
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  border: 2px solid #80848e;
+  border: 2px solid var(--bg-main-hover);
   flex-shrink: 0;
   display: flex;
   align-items: center;
@@ -1297,7 +1317,7 @@ onUnmounted(() => {
 }
 
 .radio-indicator.checked {
-  border-color: var(--brand-color);
+  border-color: var(--primary);
 }
 
 .radio-indicator.checked::after {
@@ -1305,17 +1325,16 @@ onUnmounted(() => {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--brand-color);
+  background: var(--primary);
 }
 
 .option-text {
-  color: #dbdee1;
+  color: #ffffff;
   font-size: 14px;
 }
 
 .quiz-card-footer {
-  padding: 16px 20px;
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  padding: 16px 20px 20px 20px;
   display: flex;
   justify-content: space-between;
 }
@@ -1641,9 +1660,7 @@ onUnmounted(() => {
 
 .msg-avatar.model,
 .msg-avatar.assistant {
-  background: var(--brand-alpha-15);
-  color: var(--brand-color);
-  border: 1px solid var(--brand-alpha-30);
+  background: var(--bg-surface);
 }
 
 .msg-avatar .avatar-img {
@@ -1662,7 +1679,7 @@ onUnmounted(() => {
 
 .msg-meta {
   font-size: 11px;
-  color: #949ba4;
+  color: var(--bg-main-text-muted);
 }
 
 .msg-row.user .msg-meta {
@@ -1670,29 +1687,29 @@ onUnmounted(() => {
 }
 
 .msg-text {
-  color: #dbdee1;
-  font-size: 14px;
+  color: #ffffff;
+  font-size: 15px;
   line-height: 1.6;
-  background: var(--bg-darker);
-  padding: 12px 16px;
-  border-radius: 8px;
+  background: var(--bg-surface);
+  padding: 14px 18px;
+  border-radius: 12px;
   word-break: break-word;
 }
 
 .msg-row.user .msg-text.user-text {
-  background: #35393e;
-  border-bottom-right-radius: 0px;
+  background: var(--bg-main-hover);
+  /*border-top-right-radius: 0;*/
   white-space: pre-wrap;
 }
 
 .msg-row.model .msg-text,
 .msg-row.assistant .msg-text {
-  border-bottom-left-radius: 0px;
+  /*border-top-left-radius: 0;*/
 }
 
 /* Markdown 排版樣式微調 */
 :deep(.markdown-body) {
-  color: #dbdee1;
+  color: #ffffff;
   font-size: 14px;
   line-height: 1.6;
 }
@@ -1713,7 +1730,7 @@ onUnmounted(() => {
 :deep(.markdown-body h1),
 :deep(.markdown-body h2),
 :deep(.markdown-body h3) {
-  color: #f2f3f5;
+  color: #ffffff;
   font-weight: 600;
   margin-top: 16px;
   margin-bottom: 8px;
@@ -1748,27 +1765,28 @@ onUnmounted(() => {
 }
 
 :deep(.markdown-body code) {
-  background: rgba(0, 0, 0, 0.4);
+  background: var(--bg-main-light) !important;
   padding: 3px 6px;
   border-radius: 4px;
   font-family: Consolas, Monaco, monospace;
-  font-size: 12.5px;
-  color: #e06c75;
+  font-weight: bold;
+  font-size: 12px;
+  color: #000;
 }
 
 :deep(.markdown-body pre) {
-  background: var(--bg-darkest);
+  background: var(--bg-surface);
   padding: 14px;
   border-radius: 8px;
   overflow-x: auto;
   margin: 12px 0;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--bg-surface-border);
 }
 
 :deep(.markdown-body pre code) {
   background: transparent;
   padding: 0;
-  color: #dbdee1;
+  color: #ffffff;
   font-size: 12px;
 }
 
@@ -1812,8 +1830,8 @@ onUnmounted(() => {
 
 /* 底部輸入框 */
 .chat-input-area {
-  padding: 16px 24px 24px;
-  background: var(--bg-dark);
+  padding: 0 10px 8px 10px;
+  background: transparent;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1825,43 +1843,45 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   width: 100%;
-  max-width: 760px;
-  background: #383a40;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: 24px;
-  padding: 8px 16px;
+  max-width: 1000px;
+  height: 60px;
+  background: var(--bg-surface-light);
+  border: 1px solid var(--bg-surface-light-border);
+  border-radius: 50px;
+  padding: 8px 18px 8px 24px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .pill-input-wrapper:focus-within {
-  border-color: var(--brand-color);
+  /*border-color: var(--primary-lighter);*/
 }
 
 .pill-input-wrapper textarea {
   flex: 1;
   background: transparent;
   border: none;
-  color: #dbdee1;
-  font-size: 14px;
+  color: #ffffff;
+  font-size: 16px;
   line-height: 1.5;
   outline: none;
   resize: none;
-  padding: 4px 0;
+  padding: 4px 3px;
   max-height: 120px;
   font-family: inherit;
 }
 
 .pill-input-wrapper textarea::placeholder {
-  color: #6b6f78;
+  color: var(--bg-surface-text-muted-dark);
 }
 
 .send-btn {
-  background: none;
   border: none;
-  color: var(--brand-color);
+  width: 32px;
+  height: 32px;
+  color: var(--primary);
+  border-radius: 50px;
   font-size: 18px;
   cursor: pointer;
-  padding: 4px 8px;
   transition:
     transform 0.15s,
     opacity 0.15s;
@@ -1875,13 +1895,13 @@ onUnmounted(() => {
 }
 
 .send-btn:disabled {
-  color: #4e5058;
+  color: var(--bg-main-dark-text-muted);
   cursor: not-allowed;
 }
 
 .input-tip {
   font-size: 11px;
-  color: #6b6f78;
+  color: var(--bg-main-dark-text-muted);
 }
 
 /* ================= Modal Overlay 全域樣式 ================= */
@@ -2128,10 +2148,10 @@ onUnmounted(() => {
 /* 公用按鈕 */
 .btn {
   border: none;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   padding: 8px 16px;
-  border-radius: 4px;
+  border-radius: 8px;
   cursor: pointer;
   transition: background 0.15s;
 }
@@ -2142,31 +2162,31 @@ onUnmounted(() => {
 }
 
 .btn-primary {
-  background: var(--brand-color);
-  color: white;
+  background: var(--primary);
+  color: #ffffff;
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: var(--brand-hover);
+  background: var(--primary-muted);
 }
 
 .btn-secondary {
-  background: rgba(255, 255, 255, 0.08);
-  color: #dbdee1;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--bg-main);
+  color: var(--bg-main-text-muted);
+  border: 1px solid var(--bg-main-hover);
 }
 
 .btn-secondary:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.15);
+  background: var(--bg-main-hover);
 }
 
 .btn-success {
-  background: #23a55a;
-  color: white;
+  background: var(--other-color-3);
+  color: #ffffff;
 }
 
 .btn-success:hover:not(:disabled) {
-  background: #1a7f44;
+  background: var(--other-color-3-hover);
 }
 
 /* ================= 題庫管理專屬面板 UI 樣式 ================= */

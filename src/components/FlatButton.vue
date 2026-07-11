@@ -32,7 +32,7 @@ defineEmits<{
   color: #fff;
   border-radius: 6px; /* 配合 Discord 卡片風格，使用舒適圓角 */
   background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--bg-main-border);
   font-size: 16px;
   font-weight: 600;
   cursor: pointer;
@@ -62,7 +62,7 @@ defineEmits<{
   z-index: 1;
   transition: transform 0.4s cubic-bezier(0.165, 0.84, 0.44, 1); /* 平滑過渡 */
   transform: translateX(-100%); /* 完全隱藏在左側，Hover 時才推入 */
-  background: var(--brand-color, #ff667d); /* 使用品牌粉紅色作為滑動背景 */
+  background: var(--primary); /* 使用品牌粉紅色作為滑動背景 */
 }
 
 /* Hover 狀態 */
@@ -71,9 +71,9 @@ defineEmits<{
 }
 
 .btn-flat:hover:not(:disabled) {
-  border-color: transparent;
+  border-color: var(--primary);
   box-shadow: 0 4px 12px rgba(255, 102, 125, 0.25);
-  color: #000000;
+  color: var(--bg-surface);
 }
 
 /* Disabled 唯讀/處理中狀態 */

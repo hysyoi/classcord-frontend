@@ -38,7 +38,9 @@
         <div class="modal-card">
           <div class="modal-header">
             <h3>新增班級</h3>
-            <button class="close-btn" @click="closeModal">&times;</button>
+            <button class="close-btn" @click="closeModal">
+              <CloseRoundedIcon />
+            </button>
           </div>
 
           <div class="modal-tabs">
@@ -74,6 +76,7 @@
                 class="form-input"
                 required
               />
+
               <p class="form-tip">建立班級後，您將自動成為該班級的教師。</p>
             </div>
 
@@ -119,7 +122,7 @@
 import { ref } from "vue";
 import { useAppStore } from "../store/useAppStore";
 import { createServer, joinServer } from "@/api/generated";
-
+import CloseRoundedIcon from "~icons/material-symbols/close-rounded";
 const store = useAppStore();
 
 const showModal = ref(false);
@@ -200,7 +203,7 @@ const handleSubmit = async () => {
 
 <style scoped>
 .server-list {
-  background: var(--bg-darkest);
+  background: var(--bg-surface);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -226,7 +229,7 @@ const handleSubmit = async () => {
   left: -12px;
   width: 4px;
   height: 0;
-  background: var(--brand-gradient);
+  background: var(--primary-light);
   border-radius: 0 4px 4px 0;
   transition:
     height 0.2s ease,
@@ -250,8 +253,8 @@ const handleSubmit = async () => {
 .server-tooltip {
   position: absolute;
   left: 55px; /* 一律對齊在 icon 的右側外框旁 */
-  background: #414249;
-  color: #f2f3f5;
+  background: var(--bg-main);
+  color: #ffffff;
   padding: 5px 9px;
   border-radius: 6px;
   font-size: 16px;
@@ -266,7 +269,7 @@ const handleSubmit = async () => {
     opacity 0.15s ease,
     transform 0.15s ease;
   z-index: 10000;
-  border: 1px solid #505059;
+  border: 1px solid var(--bg-main-border);
 }
 
 /* Tooltip 三角箭頭 (旋轉正方形法，支援完美動態邊框) */
@@ -296,8 +299,8 @@ const handleSubmit = async () => {
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: var(--bg-dark);
-  color: white;
+  background: var(--bg-main);
+  color: #ffffff;
   font-size: 16px;
   font-weight: 500;
   display: flex;
@@ -314,13 +317,13 @@ const handleSubmit = async () => {
 .server-item-wrapper:hover .server-icon,
 .server-icon.active {
   border-radius: 12px;
-  background: var(--brand-color);
+  background: var(--primary);
 }
 
 /* 新增按鈕專屬懸停樣式 */
 .server-item-wrapper:hover .add-btn {
-  background: #ff667d !important;
-  color: white !important;
+  background: var(--primary) !important;
+  color: #ffffff !important;
   border-radius: 16px;
 }
 
@@ -333,8 +336,9 @@ const handleSubmit = async () => {
 
 .add-btn {
   font-size: 24px;
-  color: #ffccd4;
-  background: var(--bg-dark);
+  //color: #ffccd4;
+  color: var(--primary-light);
+  background: var(--bg-main);
 }
 
 /* 玻璃化彈窗樣式 */
@@ -345,7 +349,7 @@ const handleSubmit = async () => {
   width: 100vw;
   height: 100vh;
   background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(8px);
+  //backdrop-filter: blur(8px);
   z-index: 1000;
   display: flex;
   align-items: center;
@@ -355,10 +359,10 @@ const handleSubmit = async () => {
 .modal-card {
   width: 100%;
   max-width: 440px;
-  background: rgba(43, 45, 49, 0.95);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--bg-main);
+  border: 1px solid var(--bg-main-border);
   border-radius: 12px;
-  box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.5);
+  /*box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.5);*/
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -381,66 +385,70 @@ const handleSubmit = async () => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  /*border-bottom: 1px solid var(--bg-main-border);*/
 }
 
 .modal-header h3 {
   color: #f2f3f5;
-  font-size: 18px;
+  font-size: 22px;
   font-weight: 600;
 }
 
 .close-btn {
   background: none;
+  margin: -10px -15px 0 0;
+  padding: 5px;
+  border-radius: 6px;
   border: none;
-  color: #949ba4;
+  color: var(--bg-main-text-muted);
   font-size: 24px;
   cursor: pointer;
   transition: color 0.15s;
 }
 
 .close-btn:hover {
-  color: #dbdee1;
+  color: #ffffff;
+  background: var(--bg-main-hover-dark);
 }
 
 .modal-tabs {
   display: flex;
-  background: rgba(30, 31, 34, 0.5);
+  background: var(--bg-main-dark);
   padding: 4px;
   margin: 16px 24px 0;
-  border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.03);
+  border-radius: 6px;
+  /*border: 1px solid var(--bg-main-dark-border);*/
 }
 
 .tab-btn {
   flex: 1;
   background: none;
   border: none;
-  color: #949ba4;
-  font-size: 13px;
+  color: var(--bg-main-dark-text-muted);
+  font-size: 15px;
   font-weight: 500;
   padding: 8px 0;
   cursor: pointer;
-  border-radius: 6px;
+  border-radius: 3px;
   transition:
     background 0.15s,
     color 0.15s;
 }
 
 .tab-btn.active {
-  background: var(--brand-alpha-20);
-  color: var(--brand-color);
+  background: var(--bg-main-dark-hover);
+  color: #ffffff;
 }
 
 .modal-content {
-  padding: 24px;
+  padding: 18px 24px;
 }
 
 .error-banner {
-  background: rgba(242, 63, 66, 0.1);
-  border: 1px solid rgba(242, 63, 66, 0.2);
-  color: #f23f42;
-  font-size: 12px;
+  background: hsl(var(--error-base) 60% / 0.3);
+  border: 1px solid hsl(var(--error-base) 60% / 0.5);
+  color: hsl(var(--error-base) 90%);
+  font-size: 13px;
   padding: 10px 14px;
   border-radius: 6px;
   margin-bottom: 16px;
@@ -454,78 +462,85 @@ const handleSubmit = async () => {
 }
 
 .form-label {
-  color: #b5bac1;
-  font-size: 11px;
+  color: #ffffff;
+  font-size: 16px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
 .form-input {
-  background: var(--bg-darkest);
-  border: 1px solid rgba(0, 0, 0, 0.3);
-  color: #dbdee1;
+  background: var(--bg-surface);
+  border: 1px solid var(--bg-surface-border);
+  color: #ffffff;
   padding: 10px 14px;
-  border-radius: 4px;
-  font-size: 14px;
+  border-radius: 6px;
+  font-size: 15px;
   outline: none;
   transition: border-color 0.15s;
 }
 
 .form-input:focus {
-  border-color: var(--brand-color);
+  border-color: var(--primary-lighter);
 }
 
 .form-tip {
-  color: #949ba4;
-  font-size: 11px;
-  line-height: 1.4;
+  color: var(--bg-main-text-muted);
+  font-size: 12px;
   margin-top: 4px;
+  display: inline-flex;
+  align-items: center;
+  line-height: 1;
+  gap: 3px;
+  //text-align: right;
 }
 
 .modal-footer {
-  padding: 16px 24px;
-  background: var(--bg-darker);
+  padding: 18px 24px 20px 24px;
+  background: var(--bg-main);
   display: flex;
   justify-content: flex-end;
   gap: 12px;
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  /*border-top: 1px solid rgba(255, 255, 255, 0.05);*/
 }
 
 .btn-cancel {
+  //width: 100%;
   background: none;
-  border: none;
-  color: #f2f3f5;
-  font-size: 14px;
+  border: 1px solid var(--bg-main-border);
+  color: var(--bg-main-text-muted);
+  font-size: 15px;
   font-weight: 500;
-  padding: 8px 16px;
+  padding: 8px 30px;
   cursor: pointer;
-  border-radius: 4px;
+  border-radius: 6px;
   transition: background 0.15s;
 }
 
 .btn-cancel:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--bg-main-hover-dark);
+  color: #ffffff;
 }
 
 .btn-submit {
-  background: var(--brand-color);
-  border: none;
-  color: white;
-  font-size: 14px;
+  background: var(--primary);
+  border: 1px solid var(--primary-border);
+  color: #ffffff;
+  font-size: 15px;
   font-weight: 500;
-  padding: 8px 20px;
+  padding: 8px 30px;
   cursor: pointer;
-  border-radius: 4px;
+  border-radius: 6px;
   transition: background 0.15s;
 }
 
 .btn-submit:hover {
-  background: var(--brand-hover);
+  background: var(--primary-muted);
 }
 
 .btn-submit:disabled {
-  background: var(--brand-disabled);
+  background: var(--primary-disabled);
+  border: 1px solid var(--primary-disabled-border);
   cursor: not-allowed;
 }
 </style>

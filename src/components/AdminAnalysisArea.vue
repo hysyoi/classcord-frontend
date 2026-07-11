@@ -584,7 +584,7 @@ onMounted(() => {
 .admin-analysis-container {
   display: flex;
   height: 100%;
-  background: var(--bg-dark);
+  background: var(--bg-main);
   color: #dbdee1;
   overflow: hidden;
   width: 100%;
@@ -640,8 +640,8 @@ onMounted(() => {
 
 /* 右側側邊欄 (現在移至右手邊) */
 .materials-sidebar {
-  width: 250px;
-  background: var(--bg-darkest);
+  width: 265px;
+  background: var(--bg-main-dark);
   border-left: 1px solid rgba(255, 255, 255, 0.04);
   display: flex;
   flex-direction: column;
@@ -657,10 +657,10 @@ onMounted(() => {
 }
 
 .sidebar-header .title {
-  font-size: 14px;
+  font-size: 16px;
   font-weight: bold;
-  color: #949ba4;
-  letter-spacing: 0.5px;
+  color: #ffffff;
+  //letter-spacing: 0.5px;
 }
 
 .count-badge {

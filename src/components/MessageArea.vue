@@ -454,7 +454,7 @@ const openAiChat = (file: any) => {
 
 <style scoped>
 .message-area {
-  background: var(--bg-dark);
+  background: var(--bg-main);
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -481,7 +481,7 @@ const openAiChat = (file: any) => {
   height: 48px;
   box-sizing: border-box;
   padding: 0 8px 0 16px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid var(--bg-main-border);
   color: #ffffff;
   font-weight: 600;
   font-size: 16px;
@@ -501,7 +501,7 @@ const openAiChat = (file: any) => {
 .header-action-btn {
   background: transparent;
   border: none;
-  color: #b5bac1;
+  color: var(--bg-main-text-muted);
   font-size: 16px;
   cursor: pointer;
   padding: 6px 6px;
@@ -512,12 +512,12 @@ const openAiChat = (file: any) => {
 }
 
 .header-action-btn:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--bg-main-hover);
   color: #ffffff;
 }
 
 .hash {
-  color: #6b6f78;
+  color: var(--bg-main-text-muted);
   font-size: 20px;
 }
 
@@ -543,7 +543,7 @@ const openAiChat = (file: any) => {
 /* 當有滾動或滑鼠懸停時才在 Firefox 顯示滾動條 */
 .message-list:hover,
 .message-list.is-scrolling {
-  scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
+  scrollbar-color: rgba(255, 255, 255, 0.35) transparent;
 }
 
 /* 聊天區域滾動條樣式 - 配方A (整合內縮留白技巧，滑鼠直接在滾動條感應區上或滾動時才顯示) */
@@ -566,12 +566,12 @@ const openAiChat = (file: any) => {
 /* 懸浮在容器上，或者正在滾動時，才顯示 Webkit 滾動條滑塊 */
 .message-list:hover::-webkit-scrollbar-thumb,
 .message-list.is-scrolling::-webkit-scrollbar-thumb {
-  background-color: rgba(255, 255, 255, 0.25); /* 使用半透明白調 */
+  background-color: rgba(255, 255, 255, 0.35); /* 使用半透明白調 */
 }
 
 /* 當滑鼠直接懸浮在滑塊本身上時，亮度提升 */
 .message-list::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(255, 255, 255, 0.45) !important;
+  background-color: rgba(255, 255, 255, 0.4) !important;
 }
 
 .message {
@@ -585,7 +585,7 @@ const openAiChat = (file: any) => {
 }
 
 .message:hover {
-  background: #404249;
+  background: var(--bg-main-hover-darker);
 }
 
 .avatar {
@@ -596,7 +596,7 @@ const openAiChat = (file: any) => {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: white;
+  color: #ffffff;
   margin-top: 4px;
   font-size: 18px;
   font-weight: 500;
@@ -622,7 +622,7 @@ const openAiChat = (file: any) => {
 }
 
 .timestamp {
-  color: #6b6f78;
+  color: var(--bg-main-text-muted);
   font-size: 11px;
   position: relative;
   white-space: nowrap; /* 防止日期與時間之間換行 */
@@ -656,14 +656,14 @@ const openAiChat = (file: any) => {
   height: 100%;
   margin-bottom: 10px;
   box-sizing: border-box;
-  color: #dbdee1;
+  color: #ffffff;
 }
 
 /* 2. 內層卡片：負責背景、圓角、左側漸層線的 overflow 裁剪 */
 .attachment-card {
   width: 100%;
   height: 90px;
-  background: #202330;
+  background: var(--bg-surface);
   /*background: #2E2F41;*/
   border-top-right-radius: 6px;
   border-bottom-right-radius: 6px;
@@ -678,7 +678,7 @@ const openAiChat = (file: any) => {
   justify-content: space-between;
   box-sizing: border-box;
   /*border: 1px solid transparent; /* 預留邊框，防 hover 時畫面抖動 */
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--bg-surface-border);
   transition:
     border-color 0.2s,
     box-shadow 0.2s;
@@ -692,14 +692,18 @@ const openAiChat = (file: any) => {
   left: 0;
   width: 4px; /* 線條寬度 */
   height: 100%;
-  background: linear-gradient(to bottom, #dbdee1, #ff667d); /*1B7FFF*/
+  background: linear-gradient(
+    to bottom,
+    var(--bg-surface-lighter),
+    var(--primary-light)
+  ); /*1B7FFF*/
   background-size: 100% 600%;
   transition: background-position 0.5s ease; /* 平滑流動 */
 }
 
 /* 整個卡片區塊 hover 效果 */
 .attachment-container:hover .attachment-card {
-  border-color: rgb(255 255 255 / 0.24);
+  border-color: var(--bg-main-border);
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
 }
 
@@ -715,6 +719,7 @@ const openAiChat = (file: any) => {
 }
 
 .attachment-icon-wrapper {
+  color: var(--bg-surface-text-muted);
   width: 45px;
   height: 45px;
   /*background: #202225;*/
@@ -724,8 +729,8 @@ const openAiChat = (file: any) => {
   justify-content: center;
   font-size: 24px;
   flex-shrink: 0;
-  padding: 6px; /* 👈 加上 padding 以利內部百分比 Icon 自動留白 */
-  box-sizing: border-box; /* 👈 確保寬高始終鎖定在 44px，防止被 padding 撐開 */
+  padding: 6px; /* 加上 padding 以利內部百分比 Icon 自動留白 */
+  box-sizing: border-box; /* 確保寬高始終鎖定在 44px，防止被 padding 撐開 */
 }
 
 .attachment-info {
@@ -737,7 +742,7 @@ const openAiChat = (file: any) => {
 }
 
 .attachment-name {
-  color: #dbdee1;
+  color: #fff;
   font-size: 16px;
   font-weight: 600;
   overflow: hidden;
@@ -746,7 +751,7 @@ const openAiChat = (file: any) => {
 }
 
 .attachment-type {
-  color: #949ba4;
+  color: var(--bg-surface-text-muted);
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.8px;
@@ -766,11 +771,11 @@ const openAiChat = (file: any) => {
   right: -15px;
   width: 33px;
   height: 33px;
-  background: #414249;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--bg-main);
+  border: 1px solid var(--bg-main-border);
   border-radius: 6px;
   font-size: 20px;
-  color: #dbdee1;
+  color: var(--bg-main-text-muted);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -795,7 +800,7 @@ const openAiChat = (file: any) => {
 }
 
 .attachment-hover-dl-btn:hover {
-  background: rgb(115 116 129);
+  background: var(--bg-main-hover);
   color: #ffffff;
   border-color: transparent;
 }
@@ -825,7 +830,7 @@ const openAiChat = (file: any) => {
 }
 
 .continuation-time {
-  color: #6b6f78;
+  color: var(--bg-main-text-muted);
   font-size: 11px;
   opacity: 0;
   transition: opacity 0.15s ease;
@@ -855,7 +860,7 @@ const openAiChat = (file: any) => {
 .date-divider::after {
   content: "";
   flex: 1;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid var(--bg-main-border);
 }
 
 .date-divider:not(:empty)::before {
@@ -867,7 +872,7 @@ const openAiChat = (file: any) => {
 }
 
 .date-text {
-  color: #949ba4;
+  color: var(--bg-main-text-muted);
   font-size: 12px;
   font-weight: 700;
 }
@@ -886,7 +891,7 @@ const openAiChat = (file: any) => {
   width: 68px;
   height: 68px;
   border-radius: 50%;
-  background-color: rgba(255, 255, 255, 0.08);
+  background-color: var(--bg-main-hover);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -898,7 +903,7 @@ const openAiChat = (file: any) => {
 
 .welcome-icon:hover {
   transform: scale(1.05);
-  background-color: rgba(255, 255, 255, 0.12);
+  background-color: var(--bg-main-hover-dark);
 }
 
 .welcome-icon svg {
@@ -917,7 +922,7 @@ const openAiChat = (file: any) => {
 
 .welcome-subtitle {
   font-size: 14px;
-  color: #b5bac1;
+  color: var(--bg-main-text-muted);
   margin: 0;
   line-height: 1.4;
 }

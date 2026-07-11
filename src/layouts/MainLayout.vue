@@ -225,8 +225,8 @@ onUnmounted(() => {
   height: 60px;
   max-width: 416px; /* 限制最大寬度 (與側邊欄 max-width: 360px 對齊) */
   border-radius: 12px;
-  background: #2e2f41; /* Discord 用戶卡片背景色 */
-  border: 1px solid rgba(255, 255, 255, 0.05); /* 疊加計算後的不透明灰色邊框 */
+  background: var(--bg-surface-light); /* Discord 用戶卡片背景色 */
+  border: 1px solid var(--bg-surface-light-border); /* 疊加計算後的不透明灰色邊框 */
   display: flex;
   align-items: center;
   padding-left: 8px;
@@ -413,7 +413,9 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 8px;
-  transition: background 0.15s, color 0.15s;
+  transition:
+    background 0.15s,
+    color 0.15s;
   box-sizing: border-box;
 }
 
