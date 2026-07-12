@@ -1627,9 +1627,9 @@ onMounted(() => {
 }
 
 :deep(.markdown-body code) {
-  background: rgba(0, 0, 0, 0.4);
+  /*background: rgba(0, 0, 0, 0.4);*/
   padding: 3px 6px;
-  border-radius: 4px;
+  /*border-radius: 4px;*/
   font-family: Consolas, Monaco, monospace;
   font-size: 12.5px;
   color: #e06c75;

@@ -6,6 +6,7 @@
   --bg-main-border: hsl(var(--bg-main-base) 28%);
 
   --bg-main-light: hsl(var(--bg-main-base) 65%);
+  --bg-main-small-light: hsl(var(--bg-main-base) 25%);
 
   --bg-main-text-muted: hsl(var(--bg-main-base) 72%);
   --bg-main-hover: hsl(var(--bg-main-base) 34%);
@@ -25,8 +26,14 @@
   --bg-surface-text-muted: hsl(var(--bg-surface-base) 76%);
   --bg-surface-text-muted-dark: hsl(var(--bg-surface-base) 56%);
 
+  --bg-surface-dark: hsl(var(--bg-surface-base) 10%);
+
+  --bg-surface-focus-base: 49 80%; /* 16 45 */
+  --bg-surface-focus: hsl(var(--bg-surface-focus-base) 75%);
+
   --bg-surface-light: hsl(var(--bg-surface-base) 21%);
   --bg-surface-light-border: hsl(var(--bg-surface-base) 31%);
+  --bg-surface-light-hover: hsl(var(--bg-surface-base) 26%);
   --bg-surface-light-text-muted: hsl(var(--bg-surface-base) 91%);
 
   --bg-surface-lighter: hsl(var(--bg-surface-base) 81%);
@@ -70,6 +77,8 @@
   --other-color-3-base: 168 68%; /* 45 */
   --other-color-3: hsl(var(--other-color-3-base) 45%);
   --other-color-3-hover: hsl(var(--other-color-3-base) 40%);
+
+  /* 23a55a */
 
   /* 3874FF */
   --brand-color: #ff667d;
@@ -133,6 +142,49 @@ body.dev-show-outlines * {
 
 ::-webkit-scrollbar-thumb:hover {
   background-color: var(--bg-black);
+}
+
+/* ================= 仿 Discord 側邊欄風格滾動條 (常駐顯示、無軌道背景) ================= */
+.session-items-container::-webkit-scrollbar,
+.report-container::-webkit-scrollbar,
+.pool-dashboard-container::-webkit-scrollbar,
+.pool-list::-webkit-scrollbar,
+.modal-body::-webkit-scrollbar {
+  width: 6px !important;
+  height: 6px !important;
+}
+
+.session-items-container::-webkit-scrollbar-track,
+.report-container::-webkit-scrollbar-track,
+.pool-dashboard-container::-webkit-scrollbar-track,
+.pool-list::-webkit-scrollbar-track,
+.modal-body::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+
+.session-items-container::-webkit-scrollbar-thumb,
+.report-container::-webkit-scrollbar-thumb,
+.pool-dashboard-container::-webkit-scrollbar-thumb,
+.pool-list::-webkit-scrollbar-thumb,
+.modal-body::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.18) !important;
+  border-radius: 99px !important;
+}
+
+.session-items-container:hover::-webkit-scrollbar-thumb,
+.report-container:hover::-webkit-scrollbar-thumb,
+.pool-dashboard-container:hover::-webkit-scrollbar-thumb,
+.pool-list:hover::-webkit-scrollbar-thumb,
+.modal-body:hover::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.3) !important;
+}
+
+.session-items-container::-webkit-scrollbar-thumb:hover,
+.report-container::-webkit-scrollbar-thumb:hover,
+.pool-dashboard-container::-webkit-scrollbar-thumb:hover,
+.pool-list::-webkit-scrollbar-thumb:hover,
+.modal-body::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(255, 255, 255, 0.45) !important;
 }
 
 /* ================= Discord 用戶卡片樣式 ================= */
@@ -291,7 +343,7 @@ body.dev-show-outlines * {
   align-items: center;
   justify-content: center;
   font-size: 20px;
-  color: #b5bac1;
+  color: var(--bg-surface-light-text-muted);
   transition:
     background 0.15s,
     color 0.15s;
@@ -301,7 +353,7 @@ body.dev-show-outlines * {
 }
 
 .control-btn:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--bg-surface-light-hover);
   color: #fff;
 }
 

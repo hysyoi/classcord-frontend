@@ -2,13 +2,24 @@
   <div class="member-list">
     <div v-for="group in groups" :key="group.role" class="group-section">
       <div class="group-name">
-        {{ group.role }} — {{ group.members.length }}
+        {{ group.role }} <span class="line">—</span> {{ group.members.length }}
       </div>
 
       <div v-for="member in group.members" :key="member.id" class="member-item">
         <div class="avatar-wrapper">
-          <div class="avatar" :style="{ background: member.color }">
-            {{ member.initial }}
+          <div class="avatar">
+            <img
+              v-if="member.avatarUrl"
+              :src="member.avatarUrl"
+              class="avatar-img"
+            />
+            <Avatar
+              v-else
+              :name="member.name"
+              variant="beam"
+              :size="34"
+              :colors="store.avatarColors"
+            />
           </div>
           <div
             class="status-dot"
@@ -24,6 +35,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { useAppStore } from "@/store/useAppStore";
+import Avatar from "vue-boring-avatars";
 
 const store = useAppStore();
 
@@ -72,6 +84,7 @@ function mapMember(m: any, defaultColor: string) {
     initial,
     color,
     online: true, // 預設全部顯示為在線狀態
+    avatarUrl: m.avatarUrl || null,
   };
 }
 </script>
@@ -82,10 +95,10 @@ function mapMember(m: any, defaultColor: string) {
   flex-shrink: 0;
   box-sizing: border-box;
   background: var(--bg-main);
-  padding: 16px 8px;
+  padding: 12px 8px;
   overflow-y: auto;
   height: 100%;
-  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  border-left: 1px solid var(--bg-main-border);
 }
 
 .group-section {
@@ -94,7 +107,7 @@ function mapMember(m: any, defaultColor: string) {
 
 .group-name {
   padding: 8px 8px 4px;
-  color: #949ba4;
+  color: var(--bg-main-text-muted);
   font-size: 14px;
   font-weight: 600;
   text-transform: uppercase;
@@ -105,14 +118,15 @@ function mapMember(m: any, defaultColor: string) {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 6px 8px;
-  border-radius: 4px;
+  padding: 4px 8px;
+  border-radius: 8px;
   cursor: pointer;
   transition: background 0.15s;
 }
 
 .member-item:hover {
-  background: #35373c;
+  background: var(--bg-main-hover-darker);
+  color: #ffffff !important;
 }
 
 .avatar-wrapper {
@@ -153,7 +167,7 @@ function mapMember(m: any, defaultColor: string) {
 }
 
 .member-name {
-  color: #949ba4;
+  color: var(--bg-main-text-muted);
   font-size: 14px;
   font-weight: 500;
   overflow: hidden;
@@ -162,6 +176,13 @@ function mapMember(m: any, defaultColor: string) {
 }
 
 .member-item:hover .member-name {
-  color: #dbdee1;
+  color: #ffffff;
+}
+
+.avatar-img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
 }
 </style>

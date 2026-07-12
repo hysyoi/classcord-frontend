@@ -1,5 +1,5 @@
 import { defineStore } from "pinia";
-import { ref, computed } from "vue";
+import { ref, computed, watch } from "vue";
 import {
   getJoinedServers,
   getChannels,
@@ -56,6 +56,7 @@ interface Message {
   createdAt: string;
   text: string;
   materials?: Material[];
+  avatarUrl?: string | null;
 }
 
 export const useAppStore = defineStore("app", () => {
@@ -89,9 +90,104 @@ export const useAppStore = defineStore("app", () => {
   const isManagingPool = ref(false);
   const isAiLimitDialogOpen = ref(false);
 
+  const avatarColors = ref<string[]>([
+    "#588b8b",
+    "#f5e4d7",
+    "#ffffff",
+    "#087e8b",
+    "#037171",
+    "#7796cb",
+    "#d6f8d6",
+    "#4d7ea8",
+    "#202330",
+  ]);
+
   const activeServerId = ref<string | null>(null);
   const activeChannelId = ref<string | null>(null);
   const isLoading = ref(false);
+
+  const channelPages = ref<Record<string, number>>({});
+  const channelHasMore = ref<Record<string, boolean>>({});
+  const isFetchingMore = ref(false);
+
+  const lastActiveChannelPerServer = ref<Record<string, string>>({});
+  const channelScrollPositions = ref<Record<string, number>>({});
+
+  const aiSessionScrollPositions = ref<Record<string, number>>({});
+  const quizReportScrollPositions = ref<Record<string, number>>({});
+  const quizHistoryScrollPositions = ref<Record<string, number>>({});
+  const lastActiveSessionPerMaterial = ref<Record<string, string>>({});
+  const materialQuizReports = ref<Record<string, any>>({});
+  const materialQuizModes = ref<Record<string, boolean>>({});
+
+  // 嘗試載入 localStorage 中的最後活躍頻道與 AI/Quiz 歷史狀態
+  try {
+    const saved = localStorage.getItem("lastActiveChannels");
+    if (saved) {
+      lastActiveChannelPerServer.value = JSON.parse(saved);
+    }
+  } catch (e) {
+    console.error("載入 lastActiveChannels 失敗:", e);
+  }
+
+  try {
+    lastActiveSessionPerMaterial.value = JSON.parse(
+      localStorage.getItem("lastActiveSessions") || "{}",
+    );
+    materialQuizReports.value = JSON.parse(
+      localStorage.getItem("materialQuizReports") || "{}",
+    );
+    materialQuizModes.value = JSON.parse(
+      localStorage.getItem("materialQuizModes") || "{}",
+    );
+  } catch (e) {
+    console.error("載入 AI/Quiz 歷史狀態失敗:", e);
+  }
+
+  // 監聽並自動寫入 localStorage
+  watch(
+    lastActiveChannelPerServer,
+    (newMap) => {
+      localStorage.setItem("lastActiveChannels", JSON.stringify(newMap));
+    },
+    { deep: true },
+  );
+
+  watch(
+    [lastActiveSessionPerMaterial, materialQuizReports, materialQuizModes],
+    () => {
+      localStorage.setItem(
+        "lastActiveSessions",
+        JSON.stringify(lastActiveSessionPerMaterial.value),
+      );
+      localStorage.setItem(
+        "materialQuizReports",
+        JSON.stringify(materialQuizReports.value),
+      );
+      localStorage.setItem(
+        "materialQuizModes",
+        JSON.stringify(materialQuizModes.value),
+      );
+    },
+    { deep: true },
+  );
+
+  // 監聽當前活躍狀態，並更新各教材的對照表
+  watch(quizReport, (val) => {
+    if (aiMaterial.value) {
+      materialQuizReports.value[aiMaterial.value.id] = val;
+    }
+  });
+  watch(isQuizMode, (val) => {
+    if (aiMaterial.value) {
+      materialQuizModes.value[aiMaterial.value.id] = val;
+    }
+  });
+  watch(activeAiSessionId, (val) => {
+    if (val && aiMaterial.value) {
+      lastActiveSessionPerMaterial.value[aiMaterial.value.id] = val;
+    }
+  });
 
   // WebSocket Client (使用普通變數以避免 Vue Proxy 包裝開銷)
   let stompClient: Client | null = null;
@@ -218,6 +314,7 @@ export const useAppStore = defineStore("app", () => {
               ? payload.user.username.charAt(0).toUpperCase()
               : "?",
             color: getRandomColor(payload.user?.id || "default"),
+            avatarUrl: payload.user?.avatarUrl || null,
             timestamp: formatTimestamp(payload.createdAt),
             createdAt: payload.createdAt || new Date().toISOString(),
             text: payload.content,
@@ -339,7 +436,13 @@ export const useAppStore = defineStore("app", () => {
         }
       }
 
-      if (channels.value.length > 0) {
+      const lastChannelId = lastActiveChannelPerServer.value[id];
+      const hasLastChannel =
+        lastChannelId && channels.value.some((c) => c.id === lastChannelId);
+
+      if (hasLastChannel) {
+        await selectChannel(lastChannelId);
+      } else if (channels.value.length > 0) {
         await selectChannel(channels.value[0].id);
       } else {
         router.push(`/channels/${id}/none`);
@@ -356,8 +459,15 @@ export const useAppStore = defineStore("app", () => {
     }
 
     activeChannelId.value = id;
+    if (activeServerId.value) {
+      lastActiveChannelPerServer.value[activeServerId.value] = id;
+    }
     // 切換時清除未讀指示器
     unreadCounts.value[id] = 0;
+
+    // 重設分頁狀態
+    channelPages.value[id] = 0;
+    channelHasMore.value[id] = true;
 
     // 導向路由 (避免重複導向)
     if (activeServerId.value) {
@@ -384,6 +494,7 @@ export const useAppStore = defineStore("app", () => {
             ? m.user.username.charAt(0).toUpperCase()
             : "?",
           color: getRandomColor(m.user?.id || "default"),
+          avatarUrl: m.user?.avatarUrl || null,
           timestamp: formatTimestamp(m.createdAt),
           createdAt: m.createdAt || "",
           text: m.content,
@@ -406,6 +517,61 @@ export const useAppStore = defineStore("app", () => {
         console.warn(`無權存取頻道 ${id}，重新導向至 /channels/@me`);
         router.push("/channels/@me");
       }
+    }
+  }
+
+  async function loadMoreMessages(channelId: string) {
+    if (isFetchingMore.value || channelHasMore.value[channelId] === false) {
+      return;
+    }
+
+    isFetchingMore.value = true;
+    const nextPage = (channelPages.value[channelId] || 0) + 1;
+
+    try {
+      const res = await getMessages({
+        path: { channelId },
+        query: { page: nextPage, size: 50 },
+        throwOnError: true,
+      });
+
+      const content = res.data?.content || [];
+      if (content.length < 50) {
+        channelHasMore.value[channelId] = false;
+      }
+
+      if (content.length > 0) {
+        const history = content
+          .map((m: any) => ({
+            id: m.id,
+            username: m.user?.username || "未知用戶",
+            initial: m.user?.username
+              ? m.user.username.charAt(0).toUpperCase()
+              : "?",
+            color: getRandomColor(m.user?.id || "default"),
+            avatarUrl: m.user?.avatarUrl || null,
+            timestamp: formatTimestamp(m.createdAt),
+            createdAt: m.createdAt || "",
+            text: m.content,
+            materials: (m.materials || []).map((mat: any) => ({
+              id: mat.id,
+              originalName: mat.originalName || "未知檔案",
+              fileType: mat.fileType || "",
+              fileUrl: mat.fileUrl || "",
+              status: mat.status || "DISABLED",
+            })),
+          }))
+          .reverse();
+
+        // 拼接在舊訊息陣列的最前面 (Prepend)
+        const currentMessages = messages.value[channelId] || [];
+        messages.value[channelId] = [...history, ...currentMessages];
+        channelPages.value[channelId] = nextPage;
+      }
+    } catch (err) {
+      console.error(`加載頻道 ${channelId} 更多歷史訊息失敗:`, err);
+    } finally {
+      isFetchingMore.value = false;
     }
   }
 
@@ -478,6 +644,11 @@ export const useAppStore = defineStore("app", () => {
     aiMessages.value = [];
     isAiLoading.value = false;
 
+    // 還原此教材的 Quiz 相關狀態
+    activeQuiz.value = null; // 測驗進度退出即重來
+    quizReport.value = materialQuizReports.value[material.id] || null;
+    isQuizMode.value = materialQuizModes.value[material.id] || false;
+
     // 載入對話清單
     try {
       const res = await listSessions({
@@ -487,7 +658,13 @@ export const useAppStore = defineStore("app", () => {
       aiSessions.value = res.data || [];
 
       let targetSessionId = "";
-      if (aiSessions.value.length > 0 && aiSessions.value[0].id) {
+      const savedSessionId = lastActiveSessionPerMaterial.value[material.id];
+      const hasSavedSession =
+        savedSessionId && aiSessions.value.some((s) => s.id === savedSessionId);
+
+      if (hasSavedSession) {
+        targetSessionId = savedSessionId;
+      } else if (aiSessions.value.length > 0 && aiSessions.value[0].id) {
         targetSessionId = aiSessions.value[0].id;
       } else {
         // 自動建立第一個新會話
@@ -521,6 +698,13 @@ export const useAppStore = defineStore("app", () => {
     isAiMode.value = true;
     activeServerId.value = serverId;
     isAiLoading.value = false;
+
+    // 還原此教材的 Quiz 相關狀態與最後會話 ID
+    activeQuiz.value = null; // 測驗進度退出即重來
+    quizReport.value = materialQuizReports.value[materialId] || null;
+    isQuizMode.value = materialQuizModes.value[materialId] || false;
+    activeAiSessionId.value = sessionId;
+    lastActiveSessionPerMaterial.value[materialId] = sessionId;
 
     // 載入伺服器頻道與角色 (若未載入)
     if (channels.value.length === 0) {
@@ -590,12 +774,26 @@ export const useAppStore = defineStore("app", () => {
   }
 
   async function selectAiSession(sessionId: string) {
+    if (activeAiSessionId.value === sessionId && aiMessages.value.length > 0) {
+      isQuizMode.value = false;
+      activeQuiz.value = null;
+      isManagingPool.value = false;
+
+      // 導向路由 (避免重複導向)
+      if (activeServerId.value && aiMaterial.value) {
+        const targetPath = `/channels/${activeServerId.value}/ai/${aiMaterial.value.id}/${sessionId}`;
+        if (router.currentRoute.value.path !== targetPath) {
+          router.push(targetPath);
+        }
+      }
+      return;
+    }
+
     activeAiSessionId.value = sessionId;
     aiMessages.value = [];
     isAiLoading.value = false;
     isQuizMode.value = false;
     activeQuiz.value = null;
-    quizReport.value = null;
     isManagingPool.value = false;
 
     // 導向路由 (避免重複導向)
@@ -860,14 +1058,14 @@ export const useAppStore = defineStore("app", () => {
     }
   }
 
-  // 根據使用者 ID 生成固定色相，保持頭像顏色一致
+  // 根據使用者 ID 從指定色盤生成固定顏色，保持頭像顏色一致
   function getRandomColor(id: string): string {
     let hash = 0;
     for (let i = 0; i < id.length; i++) {
       hash = id.charCodeAt(i) + ((hash << 5) - hash);
     }
-    const h = Math.abs(hash % 360);
-    return `hsl(${h}, 55%, 50%)`;
+    const index = Math.abs(hash % avatarColors.value.length);
+    return avatarColors.value[index];
   }
 
   // 格式化時間戳記
@@ -1041,6 +1239,7 @@ export const useAppStore = defineStore("app", () => {
                 ? m.user.username.charAt(0).toUpperCase()
                 : "?",
               color: getRandomColor(m.user?.id || "default"),
+              avatarUrl: m.user?.avatarUrl || null,
               timestamp: formatTimestamp(m.createdAt),
               createdAt: m.createdAt || "",
               text: m.content,
@@ -1113,6 +1312,19 @@ export const useAppStore = defineStore("app", () => {
     serverMembers,
     showMemberList,
     getRandomColor,
+    avatarColors,
+    channelPages,
+    channelHasMore,
+    isFetchingMore,
+    loadMoreMessages,
+    lastActiveChannelPerServer,
+    channelScrollPositions,
+    aiSessionScrollPositions,
+    quizReportScrollPositions,
+    quizHistoryScrollPositions,
+    lastActiveSessionPerMaterial,
+    materialQuizReports,
+    materialQuizModes,
     formatTimestamp,
     isTeacherOrTA,
     isAiMode,

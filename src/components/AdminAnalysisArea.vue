@@ -5,7 +5,7 @@
       <!-- 錯誤提示橫幅 -->
       <div v-if="errorMessage" class="error-banner">
         <div class="error-banner-content">
-          <AlertTriangleIcon class="w-5 h-5 shrink-0 text-red-400" />
+          <AlertTriangleIcon class="error-icon" />
           <span class="error-message-text">{{ errorMessage }}</span>
         </div>
         <button class="close-error-btn" @click="errorMessage = null">✕</button>
@@ -15,12 +15,10 @@
       <div v-if="!selectedMaterial" class="welcome-view">
         <div class="welcome-card">
           <div class="icon-glow">
-            <FileTextIcon class="w-12 h-12 text-pink-400" />
+            <FileTextIcon class="welcome-icon" />
           </div>
-          <h2 class="text-2xl font-bold mt-5 mb-3 text-white">
-            班級教材分析儀表板
-          </h2>
-          <p class="text-slate-400 text-sm max-w-md mx-auto leading-relaxed">
+          <h2 class="welcome-title">班級教材分析儀表板</h2>
+          <p class="welcome-description">
             請在右側清單點選已上傳的課程教材，查看學生的個人自主測驗錯題分佈，或是查看
             AI 針對學生日常提問彙整出的疑問焦點與教學對策。
           </p>
@@ -29,8 +27,8 @@
 
       <!-- 狀態 2: 載入中 -->
       <div v-else-if="loadingAnalysis" class="analysis-loading-view">
-        <RefreshCwIcon class="animate-spin w-10 h-10 text-pink-400" />
-        <span class="mt-4 text-sm text-slate-400">正在獲取班級分析數據...</span>
+        <RefreshCwIcon class="loading-spinner" />
+        <span class="loading-text">正在獲取班級分析數據...</span>
       </div>
 
       <!-- 狀態 3: 顯示分析詳情 -->
@@ -43,6 +41,8 @@
               {{ selectedMaterial.originalName }}
             </h2>
           </div>
+        </div>
+        <div class="detail-tabs">
           <!-- Tabs 分頁 -->
           <div class="tabs-list">
             <button
@@ -50,14 +50,14 @@
               :class="{ active: activeTab === 'wrong-questions' }"
               @click="toggleTab('wrong-questions')"
             >
-              ❌ 錯題分佈統計
+              錯題分佈統計
             </button>
             <button
               class="tab-btn"
               :class="{ active: activeTab === 'doubts' }"
               @click="toggleTab('doubts')"
             >
-              💡 學生疑問焦點 (AI)
+              學生疑問焦點 (AI)
             </button>
           </div>
         </div>
@@ -69,8 +69,9 @@
             class="wrong-questions-tab"
           >
             <div v-if="wrongQuestions.length === 0" class="empty-state">
-              <CheckCircleIcon class="w-12 h-12 text-slate-500 mb-2" />
-              <p class="text-slate-400">目前尚無此教材的測驗作答記錄</p>
+              <!--              <CheckCircleIcon class="empty-state-icon" />-->
+              <EmptyBoldIcon class="empty-state-icon" />
+              <p class="empty-state-text">目前尚無此教材的測驗作答記錄</p>
             </div>
 
             <div v-else class="questions-list-wrapper">
@@ -100,7 +101,7 @@
                   >
                   <span class="divider">|</span>
                   <span
-                    >答錯人數：<strong class="text-pink-400">{{
+                    >答錯人數：<strong class="highlight-wrong">{{
                       q.wrongAttempts
                     }}</strong></span
                   >
@@ -135,9 +136,7 @@
                           )
                         }}%)
                       </span>
-                      <span class="option-count text-slate-500" v-else
-                        >0 票</span
-                      >
+                      <span class="option-count zero-votes" v-else>0 票</span>
                     </div>
                     <!-- 比例條 -->
                     <div class="progress-bar-bg">
@@ -168,17 +167,17 @@
                     class="accordion-toggle"
                     @click="toggleExplanation(q.questionId)"
                   >
-                    <span>📖 查看本題詳解與回饋</span>
+                    <span>查看本題詳解</span>
                     <ChevronDownIcon
-                      class="accordion-arrow w-4 h-4 transition-transform duration-200"
+                      class="accordion-arrow"
                       :class="{
-                        'rotate-180': expandedExplanations.has(q.questionId),
+                        'rotate-180': expandedExplanations[q.questionId],
                       }"
                     />
                   </button>
                   <div
                     class="accordion-content"
-                    v-if="expandedExplanations.has(q.questionId)"
+                    v-if="expandedExplanations[q.questionId]"
                   >
                     <div class="explanation-block">
                       <div class="block-title">本題正解</div>
@@ -227,13 +226,14 @@
                 </div>
               </div>
             </div>
+            <div class="h-10"></div>
           </div>
 
           <!-- AI 疑問焦點分頁 -->
           <div v-else-if="activeTab === 'doubts'" class="doubts-tab">
             <!-- 重新分析按鈕與頂部摘要 -->
             <div class="doubts-controls">
-              <p class="summary-text text-sm text-slate-400">
+              <p class="summary-text">
                 本分析為彙整學生最近與 AI 助理的對話紀錄。AI
                 會自動過濾打招呼、感謝等非學習的閒聊對話。
               </p>
@@ -243,8 +243,8 @@
                 :disabled="loadingDoubt"
               >
                 <RefreshCwIcon
-                  class="w-4 h-4 mr-2"
-                  :class="{ 'animate-spin': loadingDoubt }"
+                  class="btn-icon"
+                  :class="{ 'btn-icon-spin': loadingDoubt }"
                 />
                 {{
                   loadingDoubt
@@ -258,18 +258,16 @@
 
             <!-- 分析載入中 -->
             <div v-if="loadingDoubt" class="doubts-loading-state">
-              <RefreshCwIcon class="animate-spin w-8 h-8 text-pink-400 mb-2" />
-              <p class="text-sm text-slate-400">
-                正在分析學生對話記錄、歸納學習焦點...
-              </p>
+              <RefreshCwIcon class="spinner-medium" />
+              <p class="loading-desc">正在分析學生對話記錄、歸納學習焦點...</p>
             </div>
 
             <!-- 分析結果 -->
             <div v-else-if="doubtAnalysis" class="doubts-result-wrapper">
               <!-- 總問題數資訊 -->
               <div class="doubt-stats-banner">
-                💡 本教材共分析了
-                <strong class="text-pink-400">{{
+                本教材共分析了
+                <strong class="highlight-pink">{{
                   doubtAnalysis.totalQuestionsAnalyzed
                 }}</strong>
                 筆學生向 AI 助理發問的學習對話。
@@ -282,8 +280,8 @@
                 "
                 class="empty-state"
               >
-                <CheckCircleIcon class="w-12 h-12 text-slate-500 mb-2" />
-                <p class="text-slate-400">
+                <CheckCircleIcon class="empty-state-icon" />
+                <p class="empty-state-text">
                   此教材最近無相關的學生發問對話，尚無歸納主題
                 </p>
               </div>
@@ -327,8 +325,8 @@
                     v-if="theme.recommendation"
                   >
                     <div class="rec-header">
-                      <LightbulbIcon class="w-4 h-4 text-amber-400 shrink-0" />
-                      <span class="rec-title">給教師與助教的教學建議：</span>
+                      <LightbulbIcon class="lightbulb-icon" />
+                      <span class="rec-title">給教師與助教的教學建議</span>
                     </div>
                     <p class="rec-text">{{ theme.recommendation }}</p>
                   </div>
@@ -338,8 +336,8 @@
 
             <!-- 無分析資料的初始狀態 -->
             <div v-else class="empty-state">
-              <HelpCircleIcon class="w-12 h-12 text-slate-500 mb-2" />
-              <p class="text-slate-400">
+              <HelpCircleIcon class="empty-state-icon" />
+              <p class="empty-state-text">
                 此教材尚未進行過 AI 疑問分析。請點擊上方「開始分析
                 (AI)」按鈕開啟分析。
               </p>
@@ -365,19 +363,19 @@
           :class="{ active: selectedMaterial?.id === mat.id }"
           @click="selectMaterial(mat)"
         >
-          <span class="file-icon"><BookOpenIcon class="w-4 h-4" /></span>
+          <span class="file-icon"><BookOpenIcon class="icon-book" /></span>
           <span class="file-name" :title="mat.originalName">{{
             mat.originalName
           }}</span>
-          <ChevronRightIcon class="chevron-icon w-4 h-4" />
+          <ChevronRightIcon class="chevron-icon" />
         </button>
         <div v-if="materials.length === 0" class="empty-list-text">
           此伺服器尚無已上傳之教材
         </div>
       </div>
-      <div v-else class="sidebar-loading">
-        <RefreshCwIcon class="animate-spin w-5 h-5 text-slate-400" />
-        <span class="mt-2 text-xs text-slate-500">正在讀取教材...</span>
+      <div class="sidebar-loading" v-else>
+        <RefreshCwIcon class="spinner-small" />
+        <span class="loading-small-text">正在讀取教材...</span>
       </div>
     </div>
   </div>
@@ -397,6 +395,7 @@ import {
   HelpCircle as HelpCircleIcon,
   AlertTriangle as AlertTriangleIcon,
 } from "lucide-vue-next";
+import EmptyBoldIcon from "~icons/ph/empty-bold";
 
 const store = useAppStore();
 
@@ -412,7 +411,7 @@ const errorMessage = ref<string | null>(null);
 const wrongQuestions = ref<any[]>([]);
 const doubtAnalysis = ref<any | null>(null);
 
-const expandedExplanations = ref<Set<string>>(new Set());
+const expandedExplanations = ref<Record<string, boolean>>({});
 
 // 載入教材清單
 const loadMaterials = async () => {
@@ -434,7 +433,7 @@ const loadMaterials = async () => {
 const selectMaterial = async (mat: any) => {
   selectedMaterial.value = mat;
   activeTab.value = "wrong-questions"; // 切換教材時，自動切回到錯題統計，防範觸發 AI 分析
-  expandedExplanations.value.clear();
+  expandedExplanations.value = {};
   wrongQuestions.value = [];
   doubtAnalysis.value = null;
   errorMessage.value = null;
@@ -515,11 +514,8 @@ const toggleTab = async (tab: "wrong-questions" | "doubts") => {
 
 // 展開/收合題目詳解
 const toggleExplanation = (questionId: string) => {
-  if (expandedExplanations.value.has(questionId)) {
-    expandedExplanations.value.delete(questionId);
-  } else {
-    expandedExplanations.value.add(questionId);
-  }
+  expandedExplanations.value[questionId] =
+    !expandedExplanations.value[questionId];
 };
 
 // 計算錯誤率的樣式類型
@@ -584,8 +580,7 @@ onMounted(() => {
 .admin-analysis-container {
   display: flex;
   height: 100%;
-  background: var(--bg-main);
-  color: #dbdee1;
+  background: var(--bg-surface);
   overflow: hidden;
   width: 100%;
 }
@@ -638,19 +633,19 @@ onMounted(() => {
   color: #ffffff;
 }
 
-/* 右側側邊欄 (現在移至右手邊) */
+/* 右側側邊欄 */
 .materials-sidebar {
   width: 265px;
   background: var(--bg-main-dark);
-  border-left: 1px solid rgba(255, 255, 255, 0.04);
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
 }
 
 .sidebar-header {
+  height: 48px;
   padding: 16px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  border-bottom: 1px solid var(--bg-main-dark-border);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -660,12 +655,11 @@ onMounted(() => {
   font-size: 16px;
   font-weight: bold;
   color: #ffffff;
-  //letter-spacing: 0.5px;
 }
 
 .count-badge {
-  background: rgba(255, 102, 125, 0.2);
-  color: var(--brand-color);
+  background: var(--bg-main-dark-hover);
+  color: #ffffff;
   padding: 2px 8px;
   border-radius: 12px;
   font-size: 11px;
@@ -687,7 +681,7 @@ onMounted(() => {
   border-radius: 6px;
   border: none;
   background: transparent;
-  color: #949ba4;
+  color: var(--bg-main-dark-text-muted);
   cursor: pointer;
   transition: all 0.15s ease;
   text-align: left;
@@ -695,13 +689,13 @@ onMounted(() => {
 }
 
 .material-item:hover {
-  background: rgba(255, 255, 255, 0.03);
-  color: #dbdee1;
+  background: var(--bg-main-dark-hover);
+  color: #ffffff;
 }
 
 .material-item.active {
-  background: rgba(255, 102, 125, 0.1);
-  color: var(--brand-color);
+  background: var(--bg-main-dark-hover);
+  color: #ffffff;
   font-weight: bold;
 }
 
@@ -721,6 +715,8 @@ onMounted(() => {
 }
 
 .chevron-icon {
+  width: 16px;
+  height: 16px;
   opacity: 0;
   transition: opacity 0.15s ease;
 }
@@ -734,7 +730,7 @@ onMounted(() => {
   padding: 16px;
   text-align: center;
   font-size: 12px;
-  color: #80848e;
+  color: var(--bg-main-dark-text-muted);
 }
 
 .sidebar-loading {
@@ -752,24 +748,20 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   padding: 24px;
-  background: var(--bg-dark);
+  background: var(--bg-main);
 }
 
 .welcome-card {
   text-align: center;
-  background: rgba(30, 31, 34, 0.4);
+  background: var(--bg-main-dark);
   padding: 40px;
   border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
   backdrop-filter: blur(8px);
 }
 
 .icon-glow {
   display: inline-flex;
-  padding: 16px;
   border-radius: 50%;
-  background: rgba(255, 102, 125, 0.1);
-  box-shadow: 0 0 20px rgba(255, 102, 125, 0.2);
 }
 
 .analysis-loading-view,
@@ -789,22 +781,24 @@ onMounted(() => {
 }
 
 .detail-header {
-  padding: 20px 24px 0 24px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-  background: rgba(30, 31, 34, 0.2);
+  height: 48px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--bg-main-border);
+  background: var(--bg-main);
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
 }
 
 .header-title-row {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 16px;
 }
 
 .book-badge {
-  background: rgba(255, 255, 255, 0.1);
-  color: #dbdee1;
+  background: var(--bg-surface);
+  color: var(--bg-surface-text-muted);
   font-size: 11px;
   padding: 2px 6px;
   border-radius: 4px;
@@ -812,35 +806,43 @@ onMounted(() => {
 }
 
 .material-title-text {
-  font-size: 18px;
+  font-size: 14px;
   font-weight: bold;
   color: #ffffff;
+  margin: 0 !important;
+  line-height: 1;
+}
+
+.detail-tabs {
+  padding: 0 24px;
+  background: var(--bg-main);
+  flex-shrink: 0;
 }
 
 .tabs-list {
   display: flex;
   gap: 16px;
+  margin-bottom: -1px;
 }
 
 .tab-btn {
-  padding: 8px 16px;
+  padding: 12px 16px;
   font-size: 14px;
-  color: #949ba4;
+  color: var(--bg-main-text-muted);
   background: transparent;
   border: none;
   border-bottom: 2px solid transparent;
   cursor: pointer;
   transition: all 0.15s ease;
-  padding-bottom: 12px;
 }
 
 .tab-btn:hover {
-  color: #dbdee1;
+  color: #ffffff;
 }
 
 .tab-btn.active {
-  color: var(--brand-color);
-  border-bottom-color: var(--brand-color);
+  color: var(--primary);
+  border-bottom-color: var(--primary-light);
   font-weight: bold;
 }
 
@@ -870,10 +872,9 @@ onMounted(() => {
 }
 
 .question-card {
-  background: rgba(30, 31, 34, 0.5);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: 8px;
-  padding: 20px;
+  background: var(--bg-surface-light);
+  border-radius: 12px;
+  padding: 20px 20px 15px 20px;
   transition:
     box-shadow 0.2s ease,
     border-color 0.2s ease;
@@ -881,19 +882,18 @@ onMounted(() => {
 
 .question-card:hover {
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-  border-color: rgba(255, 102, 125, 0.2);
 }
 
 .q-card-header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 12px;
   margin-bottom: 12px;
 }
 
 .q-index-badge {
-  background: rgba(255, 255, 255, 0.08);
-  color: #949ba4;
+  background: var(--bg-surface);
+  color: var(--bg-surface-text-muted);
   font-size: 11px;
   font-weight: bold;
   padding: 3px 8px;
@@ -938,7 +938,7 @@ onMounted(() => {
   align-items: center;
   gap: 12px;
   font-size: 12px;
-  color: #949ba4;
+  color: var(--bg-surface-light-text-muted);
   margin-bottom: 16px;
 }
 
@@ -950,9 +950,9 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  background: rgba(20, 21, 23, 0.3);
+  background: var(--bg-surface);
   padding: 16px;
-  border-radius: 6px;
+  border-radius: 8px;
   margin-bottom: 16px;
 }
 
@@ -966,7 +966,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   font-size: 13px;
-  color: #dbdee1;
+  color: var(--bg-surface-text-muted);
   gap: 8px;
 }
 
@@ -974,18 +974,19 @@ onMounted(() => {
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--bg-surface-light);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 11px;
   font-weight: bold;
-  color: #949ba4;
+  color: var(--bg-surface-light-text-muted);
 }
 
 .option-key.is-correct {
   background: rgba(34, 197, 94, 0.2);
-  color: #4ade80;
+  /*color: #4ade80;*/
+  color: #23a55a;
 }
 
 .option-content-text {
@@ -998,29 +999,31 @@ onMounted(() => {
 .option-count {
   font-size: 12px;
   font-weight: bold;
-  color: #949ba4;
+  color: var(--bg-surface-text-muted);
 }
 
 .progress-bar-bg {
   height: 6px;
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--bg-surface-light);
   border-radius: 3px;
   overflow: hidden;
 }
 
 .progress-bar-fill {
   height: 100%;
-  background: rgba(255, 102, 125, 0.5);
+  /*background: rgba(255, 102, 125, 0.5);*/
+  background: rgba(239, 68, 68, 0.15);
   border-radius: 3px;
   transition: width 0.3s ease;
 }
 
 .progress-bar-fill.is-correct-fill {
-  background: rgba(34, 197, 94, 0.5);
+  /*background: rgba(34, 197, 94, 0.5);*/
+  background: rgba(34, 197, 94, 0.2);
 }
 
 .explanation-accordion {
-  border-top: 1px solid rgba(255, 255, 255, 0.04);
+  border-top: 1px solid var(--bg-surface-light-border);
   padding-top: 12px;
 }
 
@@ -1031,7 +1034,7 @@ onMounted(() => {
   justify-content: space-between;
   border: none;
   background: transparent;
-  color: #949ba4;
+  color: var(--bg-surface-light-text-muted);
   font-size: 13px;
   cursor: pointer;
   padding: 4px 0;
@@ -1039,18 +1042,19 @@ onMounted(() => {
 }
 
 .accordion-toggle:hover {
-  color: #dbdee1;
+  color: #ffffff;
 }
 
 .accordion-content {
   margin-top: 12px;
-  background: rgba(20, 21, 23, 0.5);
-  border-radius: 6px;
+  background: var(--bg-surface);
+  border-radius: 8px;
   padding: 16px;
   font-size: 13px;
   display: flex;
   flex-direction: column;
   gap: 12px;
+  margin-bottom: 5px;
 }
 
 .explanation-block {
@@ -1062,18 +1066,19 @@ onMounted(() => {
 .explanation-block .block-title {
   font-size: 11px;
   font-weight: bold;
-  color: #80848e;
+  color: var(--bg-surface-text-muted);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
 .correct-answer-text {
-  color: #4ade80;
+  color: #23a55a;
   font-weight: bold;
 }
 
 .explanation-text {
-  color: #dbdee1;
+  color: #ffffff;
+  font-size: 12px;
   line-height: 1.5;
 }
 
@@ -1104,11 +1109,12 @@ onMounted(() => {
 
 .opt-key-badge.is-correct {
   background: rgba(34, 197, 94, 0.15);
-  color: #4ade80;
+  color: #23a55a;
 }
 
 .opt-exp-text {
-  color: #949ba4;
+  font-size: 12px;
+  color: #ffffff;
 }
 
 .doubts-tab {
@@ -1121,26 +1127,21 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: rgba(30, 31, 34, 0.3);
+  background: var(--bg-surface-light);
   padding: 16px 20px;
   border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--bg-surface-light-border);
   gap: 16px;
-}
-
-.summary-text {
-  max-w: 70%;
-  line-height: 1.4;
 }
 
 .btn-regenerate {
   display: flex;
   align-items: center;
-  background: var(--brand-color);
-  color: white;
-  border: none;
+  background: transparent;
+  color: var(--bg-surface-light-text-muted);
+  border: 3px solid var(--bg-surface);
   padding: 8px 16px;
-  border-radius: 6px;
+  border-radius: 24px;
   font-size: 13px;
   font-weight: bold;
   cursor: pointer;
@@ -1149,7 +1150,8 @@ onMounted(() => {
 }
 
 .btn-regenerate:hover:not(:disabled) {
-  background: #ff8597;
+  background: var(--bg-surface);
+  color: #ffffff;
 }
 
 .btn-regenerate:disabled {
@@ -1158,12 +1160,14 @@ onMounted(() => {
 }
 
 .doubt-stats-banner {
-  background: rgba(255, 102, 125, 0.08);
-  border-left: 4px solid var(--brand-color);
+  /*background: var(--bg-surface-dark);*/
+  border: 3px solid var(--bg-surface-light);
+  /*border-left: 4px solid var(--brand-color);*/
   padding: 12px 16px;
-  border-radius: 0 8px 8px 0;
+  border-radius: 8px;
   font-size: 14px;
-  color: #dbdee1;
+  color: var(--bg-surface-text-muted);
+  margin-bottom: 24px;
 }
 
 .themes-list {
@@ -1173,16 +1177,15 @@ onMounted(() => {
 }
 
 .theme-card {
-  background: rgba(30, 31, 34, 0.4);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  border-left: 4px solid var(--brand-color);
-  border-radius: 0 8px 8px 0;
+  background: var(--bg-surface-light);
+  /*border-left: 4px solid var(--brand-color);*/
+  border-radius: 8px;
   padding: 20px;
   transition: border-color 0.2s ease;
 }
 
 .theme-card:hover {
-  border-left-color: #ff8597;
+  /*border-left-color: #ff8597;*/
 }
 
 .theme-header {
@@ -1193,10 +1196,10 @@ onMounted(() => {
 }
 
 .theme-index {
-  font-size: 11px;
+  font-size: 14px;
   font-weight: bold;
-  color: var(--brand-color);
-  background: rgba(255, 102, 125, 0.1);
+  color: var(--primary);
+  background: var(--bg-surface);
   padding: 2px 6px;
   border-radius: 4px;
 }
@@ -1209,7 +1212,7 @@ onMounted(() => {
 
 .theme-description {
   font-size: 14px;
-  color: #dbdee1;
+  color: var(--bg-surface-light-text-muted);
   line-height: 1.6;
   margin-bottom: 16px;
 }
@@ -1221,7 +1224,7 @@ onMounted(() => {
 .student-questions-section .section-label {
   font-size: 12px;
   font-weight: bold;
-  color: #80848e;
+  color: var(--bg-surface-text-muted);
   margin-bottom: 8px;
 }
 
@@ -1237,17 +1240,28 @@ onMounted(() => {
 .quote-item {
   font-size: 13px;
   font-style: italic;
-  color: #949ba4;
-  background: rgba(20, 21, 23, 0.3);
+  color: var(--bg-surface-text-muted);
+  background: var(--bg-surface);
   padding: 8px 12px;
-  border-radius: 4px;
-  border-left: 2px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  border-left: 2px solid var(--bg-surface-light-text-muted);
+  cursor: pointer;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+  box-shadow: none;
+}
+
+.quote-item:hover {
+  color: #ffffff;
+  transform: translateY(-2px) translateX(-2px);
+  /*box-shadow: 0 10px 20px hsl(from var(--primary-light) h s l / 0.1);*/
 }
 
 .teaching-recommendation-box {
-  background: rgba(245, 158, 11, 0.06);
-  border: 1px solid rgba(245, 158, 11, 0.15);
-  border-radius: 6px;
+  background: var(--bg-surface);
+  border: 1px solid var(--bg-surface-border);
+  border-radius: 8px;
   padding: 14px 16px;
 }
 
@@ -1259,15 +1273,156 @@ onMounted(() => {
 }
 
 .rec-title {
-  font-size: 12px;
+  font-size: 14px;
   font-weight: bold;
-  color: #fbbf24;
+  color: var(--bg-surface-focus);
 }
 
 .rec-text {
   font-size: 13px;
-  color: #fbbf24;
+  color: #ffffff;
   line-height: 1.5;
   opacity: 0.9;
+}
+
+/* 用來取代 Tailwind CSS 的自訂樣式 */
+.error-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  color: var(--error);
+}
+
+.welcome-icon {
+  width: 60px;
+  height: 60px;
+  color: var(--bg-main-dark-text-muted);
+}
+
+.welcome-title {
+  font-size: 24px;
+  font-weight: bold;
+  margin-top: 8px;
+  margin-bottom: 12px;
+  color: #ffffff;
+}
+
+.welcome-description {
+  color: var(--bg-main-dark-text-muted);
+  font-size: 14px;
+  max-width: 448px;
+  margin-left: auto;
+  margin-right: auto;
+  line-height: 1.625;
+}
+
+.loading-spinner {
+  animation: spin 1s linear infinite;
+  width: 40px;
+  height: 40px;
+  color: var(--bg-surface-text-muted);
+}
+
+.loading-text {
+  margin-top: 16px;
+  font-size: 14px;
+  color: var(--bg-main-dark-text-muted-darker);
+}
+
+.empty-state-icon {
+  width: 48px;
+  height: 48px;
+  color: var(--bg-surface-text-muted);
+  margin-bottom: 8px;
+}
+
+.empty-state-text {
+  color: var(--bg-surface-text-muted-dark);
+  font-size: 14px;
+}
+
+.highlight-wrong {
+}
+
+.zero-votes {
+  color: #80848e;
+}
+
+.accordion-arrow {
+  width: 16px;
+  height: 16px;
+  transition: transform 0.2s ease;
+}
+
+.accordion-arrow.rotate-180 {
+  transform: rotate(180deg);
+}
+
+.summary-text {
+  max-width: 70%;
+  line-height: 1.4;
+  font-size: 14px;
+  color: #949ba4;
+}
+
+.btn-icon {
+  width: 16px;
+  height: 16px;
+  margin-right: 8px;
+}
+
+.btn-icon-spin {
+  animation: spin 1s linear infinite;
+}
+
+.spinner-medium {
+  animation: spin 1s linear infinite;
+  width: 32px;
+  height: 32px;
+  color: #f472b6;
+  margin-bottom: 8px;
+}
+
+.loading-desc {
+  font-size: 14px;
+  color: #949ba4;
+}
+
+.highlight-pink {
+  color: var(--primary-light);
+}
+
+.lightbulb-icon {
+  width: 16px;
+  height: 16px;
+  color: var(--bg-surface-focus);
+  flex-shrink: 0;
+}
+
+.icon-book {
+  width: 16px;
+  height: 16px;
+}
+
+.spinner-small {
+  animation: spin 1s linear infinite;
+  width: 20px;
+  height: 20px;
+  color: #949ba4;
+}
+
+.loading-small-text {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #80848e;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 </style>

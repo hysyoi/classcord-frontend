@@ -59,12 +59,19 @@
               :class="{ 'is-continuation': isContinuation(message, index) }"
             >
               <!-- 大頭貼：若非連續發言則顯示頭像，否則顯示懸浮時間佔位符 -->
-              <div
-                v-if="!isContinuation(message, index)"
-                class="avatar"
-                :style="{ background: message.color }"
-              >
-                {{ message.initial }}
+              <div v-if="!isContinuation(message, index)" class="avatar">
+                <img
+                  v-if="message.avatarUrl"
+                  :src="message.avatarUrl"
+                  class="avatar-img"
+                />
+                <Avatar
+                  v-else
+                  :name="message.username"
+                  variant="beam"
+                  :size="40"
+                  :colors="store.avatarColors"
+                />
               </div>
               <div v-else class="continuation-time-placeholder">
                 <span class="continuation-time">{{
@@ -205,6 +212,7 @@ import SidebarRightIcon from "~icons/akar-icons/sidebar-right";
 import AiFillIcon from "~icons/mingcute/ai-fill";
 import LoadingLoopIcon from "~icons/line-md/loading-loop";
 import ThunderIcon from "~icons/boxicons/thunder";
+import Avatar from "vue-boring-avatars";
 
 const store = useAppStore();
 const messageListRef = ref<HTMLDivElement | null>(null);
@@ -223,7 +231,7 @@ const isScrolling = ref(false);
 let scrollTimeout: number | null = null;
 let resizeObserver: ResizeObserver | null = null;
 
-const handleScroll = () => {
+const handleScroll = async () => {
   isScrolling.value = true;
   if (scrollTimeout) {
     clearTimeout(scrollTimeout);
@@ -232,35 +240,109 @@ const handleScroll = () => {
   scrollTimeout = window.setTimeout(() => {
     isScrolling.value = false;
   }, 1200);
+
+  // 記錄當前滾動位置
+  if (messageListRef.value && store.activeChannelId) {
+    store.channelScrollPositions[store.activeChannelId] =
+      messageListRef.value.scrollTop;
+  }
+
+  // 偵測滾動到頂部以載入更多歷史訊息
+  if (messageListRef.value) {
+    const { scrollTop } = messageListRef.value;
+    const channelId = store.activeChannelId;
+    if (
+      scrollTop < 200 &&
+      channelId &&
+      store.channelHasMore[channelId] !== false &&
+      !store.isFetchingMore
+    ) {
+      // 紀錄加載前的 scrollHeight 與 scrollTop
+      const oldScrollHeight = messageListRef.value.scrollHeight;
+      const oldScrollTop = messageListRef.value.scrollTop;
+
+      // 觸發載入更多
+      await store.loadMoreMessages(channelId);
+
+      // 加載完成後，將捲軸定錨在原本看得到的相對位置，避免畫面猛烈跳動
+      nextTick(() => {
+        if (messageListRef.value) {
+          const newScrollHeight = messageListRef.value.scrollHeight;
+          messageListRef.value.scrollTop =
+            oldScrollTop + (newScrollHeight - oldScrollHeight);
+        }
+      });
+    }
+  }
 };
 
-// 監聽歷史訊息載入與新訊息發送/接收，並重設滾動狀態，防止頻道切換 DOM 重排殘留
+// 監聽頻道切換與訊息長度改變，精準控制滾動條記憶還原與新訊息自動探底
 watch(
-  () => store.activeChannelId,
-  () => {
+  [() => store.activeChannelId, () => store.activeMessages.length],
+  ([newChannelId /*,newLength*/], [oldChannelId /*,oldLength*/]) => {
     isScrolling.value = false;
     if (scrollTimeout) {
       clearTimeout(scrollTimeout);
       scrollTimeout = null;
     }
-    scrollToBottom();
-  },
-);
 
-watch(
-  () => store.activeMessages.length,
-  () => {
-    scrollToBottom();
+    if (!newChannelId) return;
+
+    nextTick(() => {
+      if (messageListRef.value) {
+        if (newChannelId !== oldChannelId) {
+          // 頻道切換：恢復此頻道上次的滾動位置，若無紀錄則預設滾動至最底部
+          const savedPos = store.channelScrollPositions[newChannelId];
+          if (savedPos !== undefined) {
+            messageListRef.value.scrollTop = savedPos;
+          } else {
+            messageListRef.value.scrollTop = messageListRef.value.scrollHeight;
+          }
+        } else {
+          // 同一頻道訊息增加 (新訊息發送/接收)：
+          // 只有當使用者本來就位於底部附近時才自動滾動至最底，避免打斷使用者的歷史閱讀
+          const threshold = 150;
+          const isNearBottom =
+            messageListRef.value.scrollHeight -
+              messageListRef.value.scrollTop -
+              messageListRef.value.clientHeight <
+            threshold;
+          if (isNearBottom) {
+            messageListRef.value.scrollTop = messageListRef.value.scrollHeight;
+          }
+        }
+      }
+    });
   },
 );
 
 onMounted(() => {
-  scrollToBottom();
+  const channelId = store.activeChannelId;
+  if (channelId && messageListRef.value) {
+    const savedPos = store.channelScrollPositions[channelId];
+    if (savedPos !== undefined) {
+      messageListRef.value.scrollTop = savedPos;
+    } else {
+      messageListRef.value.scrollTop = messageListRef.value.scrollHeight;
+    }
+  } else {
+    scrollToBottom();
+  }
 
-  // 監聽聊天區高度變化 (如新增檔案預覽、文字輸入增高)，自動滾動至底部，防止被遮擋
+  // 監聽聊天區高度變化 (如新增檔案預覽、文字輸入增高)
   if (typeof ResizeObserver !== "undefined" && messageListRef.value) {
     resizeObserver = new ResizeObserver(() => {
-      scrollToBottom();
+      if (messageListRef.value) {
+        const threshold = 150;
+        const isNearBottom =
+          messageListRef.value.scrollHeight -
+            messageListRef.value.scrollTop -
+            messageListRef.value.clientHeight <
+          threshold;
+        if (isNearBottom) {
+          messageListRef.value.scrollTop = messageListRef.value.scrollHeight;
+        }
+      }
     });
     resizeObserver.observe(messageListRef.value);
   }
@@ -665,10 +747,7 @@ const openAiChat = (file: any) => {
   height: 90px;
   background: var(--bg-surface);
   /*background: #2E2F41;*/
-  border-top-right-radius: 6px;
-  border-bottom-right-radius: 6px;
-  border-top-left-radius: 6px;
-  border-bottom-left-radius: 6px;
+  border-radius: 8px;
   overflow: hidden; /* 👈 核心：完美裁剪 ::before 裝飾線 */
   position: relative; /* 👈 讓 ::before 相對於卡片定位 */
   padding: 0 14px 0 20px; /* 左側推 25px，給裝飾線留空間 */
@@ -925,6 +1004,13 @@ const openAiChat = (file: any) => {
   color: var(--bg-main-text-muted);
   margin: 0;
   line-height: 1.4;
+}
+
+.avatar-img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
 }
 </style>
 

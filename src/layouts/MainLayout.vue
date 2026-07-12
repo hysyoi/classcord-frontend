@@ -46,13 +46,19 @@
       :style="{ width: userCardWidth + 'px' }"
     >
       <div class="user-card-avatar-info">
-        <div class="user-avatar" :style="{ backgroundColor: avatarColor }">
+        <div class="user-avatar">
           <img
             v-if="store.currentUser.avatarUrl"
             :src="store.currentUser.avatarUrl"
             class="user-avatar-img"
           />
-          <span v-else>{{ userInitial }}</span>
+          <Avatar
+            v-else
+            :name="store.currentUser.username"
+            variant="beam"
+            :size="32"
+            :colors="store.avatarColors"
+          />
           <div class="user-status-dot"></div>
         </div>
         <div class="user-info">
@@ -81,12 +87,12 @@
 
         <!-- 使用者設定下拉選單 -->
         <div v-if="showUserMenu" class="user-dropdown-menu" @click.stop>
-          <div class="menu-item user-info-item">
-            <div class="menu-user-email">{{ store.currentUser?.email }}</div>
-          </div>
-          <div class="menu-divider"></div>
+          <!--          <div class="menu-item user-info-item">-->
+          <!--            <div class="menu-user-email">{{ store.currentUser?.email }}</div>-->
+          <!--          </div>-->
+          <!--          <div class="menu-divider"></div>-->
           <button class="menu-item logout-item" @click="handleLogout">
-            <span class="logout-icon">🚪</span> 登出
+            <span class="logout-icon"><Logout2OutlineIcon /></span> 登出
           </button>
         </div>
       </div>
@@ -101,6 +107,9 @@ import ServerList from "@/components/ServerList.vue";
 import AiSessionList from "@/components/AiSessionList.vue";
 import { useAppStore } from "@/store/useAppStore";
 import { useAuthStore } from "@/store/useAuthStore";
+import Avatar from "vue-boring-avatars";
+import Logout2OutlineIcon from "~icons/solar/logout-2-outline";
+
 import { Splitpanes, Pane } from "splitpanes";
 import "splitpanes/dist/splitpanes.css";
 import { useRouter } from "vue-router";
@@ -142,17 +151,17 @@ const userCardWidth = computed(() => {
   return 72 + sidebarWidth.value - 16;
 });
 
-const userInitial = computed(() => {
-  return store.currentUser?.username
-    ? store.currentUser.username.charAt(0).toUpperCase()
-    : "?";
-});
-
-const avatarColor = computed(() => {
-  return store.currentUser?.id
-    ? store.getRandomColor(store.currentUser.id)
-    : "var(--brand-color)";
-});
+// const userInitial = computed(() => {
+//   return store.currentUser?.username
+//     ? store.currentUser.username.charAt(0).toUpperCase()
+//     : "?";
+// });
+//
+// const avatarColor = computed(() => {
+//   return store.currentUser?.id
+//     ? store.getRandomColor(store.currentUser.id)
+//     : "var(--brand-color)";
+// });
 
 const showUserMenu = ref(false);
 
@@ -191,7 +200,7 @@ onUnmounted(() => {
   top: 0;
   width: 100%;
   height: 33px;
-  color: white;
+  color: var(--bg-surface-text-muted);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -248,8 +257,9 @@ onUnmounted(() => {
 }
 
 .user-card-avatar-info:hover {
-  background: rgba(255, 255, 255, 0.08);
-  color: #dbdee1;
+  background: var(--bg-surface-light-hover);
+  /*color: #dbdee1;*/
+  color: var(--bg-surface-light-text-muted);
 }
 
 /* 靜音按鈕的斜線 */
@@ -375,14 +385,14 @@ onUnmounted(() => {
 /* 使用者下拉選單樣式 */
 .user-dropdown-menu {
   position: absolute;
-  bottom: 50px;
+  bottom: 70px;
   right: 0;
-  width: 160px;
-  background: rgba(30, 31, 34, 0.95);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 8px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
-  padding: 6px 0;
+  width: 100px;
+  background: var(--bg-surface-light);
+  border: 1px solid var(--bg-surface-light-border);
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  padding: 6px 6px;
   z-index: 200;
   backdrop-filter: blur(8px);
   display: flex;
@@ -405,10 +415,10 @@ onUnmounted(() => {
   width: 100%;
   background: none;
   border: none;
-  padding: 8px 12px;
+  padding: 4px 12px;
   text-align: left;
-  color: #dbdee1;
-  font-size: 13px;
+  color: var(--bg-surface-light-text-muted);
+  font-size: 14px;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -420,8 +430,6 @@ onUnmounted(() => {
 }
 
 .menu-item:hover {
-  background: var(--brand-color);
-  color: white;
 }
 
 .user-info-item {
@@ -449,11 +457,16 @@ onUnmounted(() => {
 }
 
 .logout-item {
-  color: #f23f43;
+  color: var(--bg-surface-light-text-muted);
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.logout-icon {
 }
 
 .logout-item:hover {
-  background: #f23f43;
-  color: white;
+  background: var(--bg-surface-light-hover);
+  color: #ffffff;
 }
 </style>

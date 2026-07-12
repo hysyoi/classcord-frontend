@@ -3,11 +3,11 @@
     <!-- 頂部：返回與標題 -->
     <div class="list-header">
       <button class="back-btn" @click="store.exitAiMode" title="回到班級頻道">
-        ← 返回班級頻道
+        <ArrowLeftBoldIcon />返回班級頻道
       </button>
-      <div class="material-title" :title="store.aiMaterial?.originalName">
-        📖 {{ store.aiMaterial?.originalName }}
-      </div>
+      <!--      <div class="material-title" :title="store.aiMaterial?.originalName">-->
+      <!--        {{ store.aiMaterial?.originalName }}-->
+      <!--      </div>-->
     </div>
 
     <!-- Tab 切換器 (對話會話 vs 測驗紀錄) -->
@@ -15,16 +15,16 @@
       <button
         class="tab-btn"
         :class="{ active: activeTab === 'chat' }"
-        @click="activeTab = 'chat'"
+        @click="handleTabClick('chat')"
       >
-        💬 AI 對話
+        <AiFillIcon /> AI 對話
       </button>
       <button
         class="tab-btn"
         :class="{ active: activeTab === 'quiz' }"
-        @click="activeTab = 'quiz'"
+        @click="handleTabClick('quiz')"
       >
-        📊 測驗紀錄
+        <PaperLineIcon />測驗紀錄
       </button>
     </div>
 
@@ -35,7 +35,7 @@
         <!-- 新增對話按鈕 -->
         <div class="action-section">
           <button class="new-chat-btn" @click="store.createNewAiSession">
-            + 新建立對話
+            <PlusIcon />新建對話
           </button>
         </div>
 
@@ -51,7 +51,7 @@
             :class="{ active: session.id === store.activeAiSessionId }"
             @click="store.selectAiSession(session.id)"
           >
-            <span class="session-icon">💬</span>
+            <span class="session-icon"></span>
             <span class="session-text">
               會話 {{ store.aiSessions.length - index }} ({{
                 formatDate(session.createdAt)
@@ -63,7 +63,11 @@
 
       <!-- 狀態 B：歷史測驗紀錄 Tab -->
       <div v-else class="tab-panel">
-        <div class="session-items-container quiz-history-container">
+        <div
+          ref="quizHistoryScrollRef"
+          @scroll="handleQuizHistoryScroll"
+          class="session-items-container quiz-history-container"
+        >
           <div v-if="isLoadingHistory" class="loading-history-tip">
             載入歷史紀錄中...
           </div>
@@ -77,11 +81,11 @@
             class="session-item quiz-history-item"
             :class="{ active: store.quizReport?.id === quiz.id }"
             @click="selectPastQuiz(quiz.id)"
-            :title="'得分: ' + (quiz.score ?? '無') + ' 分'"
+            :title="'得分' + (quiz.score ?? '無') + ' 分'"
           >
-            <span class="session-icon">📊</span>
+            <span class="session-icon"></span>
             <div class="quiz-history-info">
-              <span class="session-text"> 得分: {{ quiz.score }} 分 </span>
+              <span class="session-text"> 得分 {{ quiz.score }} 分 </span>
               <span class="quiz-time">
                 {{ formatDate(quiz.createdAt) }}
               </span>
@@ -94,14 +98,18 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from "vue";
+import { ref, watch, nextTick, onMounted } from "vue";
 import { useAppStore } from "../store/useAppStore";
-
+import ArrowLeftBoldIcon from "~icons/ep/arrow-left-bold";
+import AiFillIcon from "~icons/mingcute/ai-fill";
+import PaperLineIcon from "~icons/mingcute/paper-line";
+import PlusIcon from "~icons/typcn/plus";
 const store = useAppStore();
 
-const activeTab = ref<"chat" | "quiz">("chat");
+const activeTab = ref<"chat" | "quiz">(store.isQuizMode ? "quiz" : "chat");
 const quizHistory = ref<any[]>([]);
 const isLoadingHistory = ref(false);
+const quizHistoryScrollRef = ref<HTMLElement | null>(null);
 
 // 載入該教材的測驗歷史紀錄
 const loadQuizHistory = async () => {
@@ -110,6 +118,14 @@ const loadQuizHistory = async () => {
   try {
     const history = await store.fetchUserQuizzes(store.aiMaterial.id);
     quizHistory.value = history;
+    nextTick(() => {
+      if (quizHistoryScrollRef.value && store.aiMaterial) {
+        const saved = store.quizHistoryScrollPositions[store.aiMaterial.id];
+        if (saved !== undefined) {
+          quizHistoryScrollRef.value.scrollTop = saved;
+        }
+      }
+    });
   } catch (err) {
     console.error(err);
   } finally {
@@ -117,45 +133,145 @@ const loadQuizHistory = async () => {
   }
 };
 
-// 監聽 Tab 切換，如果是切換到測驗紀錄則自動重整
+const handleQuizHistoryScroll = () => {
+  if (quizHistoryScrollRef.value && store.aiMaterial) {
+    store.quizHistoryScrollPositions[store.aiMaterial.id] =
+      quizHistoryScrollRef.value.scrollTop;
+  }
+};
+
+// 處理 Tab 點擊事件
+const handleTabClick = async (tab: "chat" | "quiz") => {
+  store.isManagingPool = false;
+  if (tab === "quiz") {
+    store.isQuizMode = true;
+    // 如果點擊時已經是 quiz，watch 沒觸發，手動載入與選擇歷史紀錄
+    if (activeTab.value === "quiz") {
+      await loadQuizHistory();
+      if (!store.activeQuiz) {
+        const currentReportId = store.quizReport?.id;
+        const hasCurrentReport =
+          currentReportId &&
+          quizHistory.value.some((q) => q.id === currentReportId);
+        if (hasCurrentReport) {
+          selectPastQuiz(currentReportId);
+        } else if (quizHistory.value.length > 0) {
+          selectPastQuiz(quizHistory.value[0].id);
+        } else {
+          store.activeAiSessionId = null;
+          store.quizReport = null;
+        }
+      }
+    } else {
+      activeTab.value = "quiz";
+    }
+  } else {
+    store.isQuizMode = false;
+    if (activeTab.value === "chat") {
+      store.activeQuiz = null;
+      if (store.aiSessions.length > 0) {
+        const currentId = store.activeAiSessionId;
+        const hasCurrent =
+          currentId && store.aiSessions.some((s) => s.id === currentId);
+        if (hasCurrent) {
+          store.selectAiSession(currentId);
+        } else {
+          store.selectAiSession(store.aiSessions[0].id);
+        }
+      } else {
+        store.activeAiSessionId = null;
+      }
+    } else {
+      activeTab.value = "chat";
+    }
+  }
+};
+
 // 監聽 Tab 切換，切換時自動引導至對應視圖與內容
 watch(activeTab, async (newTab) => {
   store.isManagingPool = false;
   if (newTab === "quiz") {
     await loadQuizHistory();
-    if (quizHistory.value.length > 0) {
-      // 有歷史紀錄，自動載入最新的一筆報告
-      selectPastQuiz(quizHistory.value[0].id);
-    } else {
-      // 沒歷史紀錄，顯示預設提示頁面
-      store.activeAiSessionId = null;
-      store.quizReport = null;
-      store.activeQuiz = null;
-      store.isQuizMode = true;
+    // 只有在當前沒有進行中測驗時，才載入歷史紀錄報告
+    if (!store.activeQuiz) {
+      const currentReportId = store.quizReport?.id;
+      const hasCurrentReport =
+        currentReportId &&
+        quizHistory.value.some((q) => q.id === currentReportId);
+      if (hasCurrentReport) {
+        selectPastQuiz(currentReportId);
+      } else if (quizHistory.value.length > 0) {
+        selectPastQuiz(quizHistory.value[0].id);
+      } else {
+        store.activeAiSessionId = null;
+        store.quizReport = null;
+        store.activeQuiz = null;
+        store.isQuizMode = true;
+      }
     }
   } else {
     // 切換回 AI 對話
-    store.quizReport = null;
     store.activeQuiz = null;
     store.isQuizMode = false;
     if (store.aiSessions.length > 0) {
-      // 預設切換至最新一個會話
-      store.selectAiSession(store.aiSessions[0].id);
+      const currentId = store.activeAiSessionId;
+      const hasCurrent =
+        currentId && store.aiSessions.some((s) => s.id === currentId);
+      if (hasCurrent) {
+        store.selectAiSession(currentId);
+      } else {
+        store.selectAiSession(store.aiSessions[0].id);
+      }
     } else {
       store.activeAiSessionId = null;
     }
   }
 });
 
-// 當進入測驗模式時，自動將 Tab 設定為測驗紀錄，方便退出後直接查看
+// 當進行中測驗狀態改變時（例如退出或提交測驗），若在測驗頁籤下，自動載入並選取最新的一筆歷史紀錄
 watch(
-  () => store.isQuizMode,
-  (newVal) => {
-    if (newVal) {
-      activeTab.value = "quiz";
+  () => store.activeQuiz,
+  async (newVal, oldVal) => {
+    if (!newVal && oldVal && store.isQuizMode) {
+      await loadQuizHistory();
+      if (quizHistory.value.length > 0) {
+        selectPastQuiz(quizHistory.value[0].id);
+      } else {
+        store.quizReport = null;
+      }
     }
   },
 );
+
+// 監聽測驗模式與題庫管理狀態，同步更新左側 Tab 高亮
+watch(
+  () => [store.isQuizMode, store.isManagingPool],
+  ([isQuiz, isManaging]) => {
+    if (isQuiz) {
+      activeTab.value = "quiz";
+    } else if (!isManaging) {
+      activeTab.value = "chat";
+    }
+  },
+);
+
+onMounted(async () => {
+  if (activeTab.value === "quiz") {
+    await loadQuizHistory();
+    // 只有在當前沒有進行中測驗時，才載入歷史紀錄報告
+    if (!store.activeQuiz) {
+      const currentReportId = store.quizReport?.id;
+      const hasCurrentReport =
+        currentReportId &&
+        quizHistory.value.some((q) => q.id === currentReportId);
+      if (hasCurrentReport) {
+        selectPastQuiz(currentReportId);
+      } else if (quizHistory.value.length > 0) {
+        selectPastQuiz(quizHistory.value[0].id);
+      }
+    }
+  }
+});
 
 // 點擊過去的測驗紀錄查看報告
 const selectPastQuiz = async (quizId: string) => {
@@ -184,17 +300,15 @@ const formatDate = (dateStr?: string) => {
 
 <style scoped>
 .ai-session-list {
-  background: var(--bg-darker);
+  background: var(--bg-main-dark);
   display: flex;
   flex-direction: column;
   height: 100vh;
   overflow: hidden;
-  border-right: 0.5px solid var(--bg-darkest);
 }
 
 .list-header {
-  padding: 16px 12px;
-  border-bottom: 0.5px solid var(--bg-darkest);
+  padding: 8px 12px;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -202,12 +316,14 @@ const formatDate = (dateStr?: string) => {
 }
 
 .back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  color: #dbdee1;
+  color: var(--bg-main-dark-text-muted);
   font-size: 13px;
   font-weight: 500;
-  padding: 6px 12px;
+  padding: 6px 10px;
   border-radius: 6px;
   cursor: pointer;
   text-align: left;
@@ -217,9 +333,8 @@ const formatDate = (dateStr?: string) => {
 }
 
 .back-btn:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--bg-main-dark-hover);
   color: white;
-  border-color: rgba(255, 255, 255, 0.3);
 }
 
 .material-title {
@@ -231,27 +346,36 @@ const formatDate = (dateStr?: string) => {
   white-space: nowrap;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  padding-left: 3px;
   margin-top: 4px;
 }
 
 /* Tab 切換器樣式 */
 .tab-switcher {
   display: flex;
-  padding: 12px 12px 6px;
-  gap: 8px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  padding: 5px 6px 5px 6px;
+  margin: 0 12px;
   flex-shrink: 0;
+  gap: 5px;
+  background: var(--bg-surface);
+  border-radius: 6px;
 }
 
 .tab-btn {
   flex: 1;
   background: transparent;
   border: none;
-  color: #949ba4;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+  color: var(--bg-surface-light-text-muted);
   font-size: 13px;
   font-weight: 600;
-  padding: 8px 0;
+  padding: 8px 8px;
   border-radius: 4px;
+  text-align: center;
+  justify-content: center;
   cursor: pointer;
   transition:
     background 0.15s,
@@ -259,13 +383,12 @@ const formatDate = (dateStr?: string) => {
 }
 
 .tab-btn:hover {
-  background: rgba(255, 255, 255, 0.04);
-  color: #dbdee1;
+  color: #ffffff;
 }
 
 .tab-btn.active {
-  background: var(--brand-alpha-15);
-  color: var(--brand-color);
+  background: var(--bg-surface-light);
+  color: var(--primary);
 }
 
 .list-content-area {
@@ -289,28 +412,33 @@ const formatDate = (dateStr?: string) => {
 
 .new-chat-btn {
   width: 100%;
-  background: var(--brand-color);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+  background: var(--primary);
+  justify-content: center;
   border: none;
-  color: white;
-  font-size: 13px;
+  color: #ffffff;
+  font-size: 14px;
   font-weight: 500;
-  padding: 10px;
+  padding: 10px 10px;
   border-radius: 6px;
   cursor: pointer;
   transition: background 0.15s;
 }
 
 .new-chat-btn:hover {
-  background: var(--brand-hover);
+  background: var(--primary-muted);
 }
 
 .session-items-container {
   flex: 1;
   overflow-y: auto;
-  padding: 0 8px 12px;
+  padding: 0 12px 0 12px;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
 }
 
 .quiz-history-container {
@@ -319,7 +447,7 @@ const formatDate = (dateStr?: string) => {
 
 .no-session-tip,
 .loading-history-tip {
-  color: #949ba4;
+  color: var(--bg-main-dark-text-muted);
   font-size: 12px;
   text-align: center;
   margin-top: 24px;
@@ -329,9 +457,9 @@ const formatDate = (dateStr?: string) => {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 12px;
+  padding: 10px 2px;
   border-radius: 6px;
-  color: #949ba4;
+  color: var(--bg-main-dark-text-muted);
   cursor: pointer;
   transition:
     background 0.15s,
@@ -339,28 +467,32 @@ const formatDate = (dateStr?: string) => {
 }
 
 .session-item:hover {
-  background: rgba(255, 255, 255, 0.04);
-  color: #dbdee1;
+  background: var(--bg-main-dark-hover);
+  color: #ffffff;
 }
 
 .session-item.active {
-  background: #404249;
-  color: white;
+  background: var(--bg-main-dark-hover);
+  color: #ffffff;
 }
 
 .quiz-history-item {
   align-items: flex-start;
+  padding: 10px 2px;
 }
 
 .quiz-history-info {
   display: flex;
-  flex-direction: column;
   min-width: 0;
+  /*flex-direction: column;*/
+  justify-content: space-between;
+  width: 100%;
+  padding-right: 8px;
 }
 
 .quiz-time {
   font-size: 10px;
-  color: #6b6f78;
+  color: var(--bg-main-text-muted);
   margin-top: 2px;
 }
 
