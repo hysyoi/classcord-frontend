@@ -6,10 +6,8 @@
     <template v-else-if="isHome">
       <div class="welcome-area">
         <div class="welcome-card">
-          <h2 class="text-2xl font-bold mb-2">歡迎來到 ClassCord! 👋</h2>
-          <p class="text-slate-400 text-sm">
-            請選擇左側的伺服器與頻道開始上課或討論吧！
-          </p>
+          <h2 class="welcome-title">歡迎來到 ClassCord 🎉</h2>
+          <p class="welcome-desc">請選擇左側的伺服器與頻道開始上課或討論吧！</p>
         </div>
       </div>
     </template>
@@ -33,7 +31,12 @@ import { useAppStore } from "@/store/useAppStore";
 const route = useRoute();
 const store = useAppStore();
 
-const isHome = computed(() => route.name === "Home");
+const isHome = computed(() => {
+  if (import.meta.env.DEV && route.query.mockHome === "true") {
+    return true;
+  }
+  return route.name === "Home";
+});
 
 const syncRouteWithStore = async () => {
   if (route.name === "AiChat") {
@@ -108,19 +111,28 @@ onMounted(async () => {
 
 .welcome-area {
   flex: 1;
-  background: var(--bg-dark);
+  background: var(--bg-main);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #dbdee1;
+  color: var(--bg-main-text-muted);
 }
 
 .welcome-card {
   text-align: center;
-  background: rgba(30, 31, 34, 0.4);
   padding: 32px;
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
   backdrop-filter: blur(8px);
+}
+
+.welcome-title {
+  font-size: 32px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  color: #ffffff;
+}
+
+.welcome-desc {
+  color: var(--bg-main-text-muted);
+  font-size: 14px;
 }
 </style>

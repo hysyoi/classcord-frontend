@@ -1,52 +1,35 @@
 <template>
   <div class="forgot-password-page">
-    <Card class="forgot-password-card border-none">
-      <CardHeader class="text-center pb-6 pt-8">
-        <CardTitle
-          @click="router.push('/')"
-          class="text-3xl font-extrabold tracking-wider bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent cursor-pointer hover:opacity-90 transition"
-        >
+    <Card class="forgot-password-card">
+      <CardHeader class="card-header">
+        <CardTitle @click="router.push('/')" class="card-title">
           ClassCord
         </CardTitle>
-        <CardDescription class="text-xs text-slate-400 mt-1.5">
+        <CardDescription class="card-description">
           重設您的帳戶密碼
         </CardDescription>
       </CardHeader>
 
-      <CardContent class="px-8 pb-6">
+      <CardContent class="card-content">
         <!-- 錯誤提示 -->
-        <div
-          v-if="errorMessage"
-          class="bg-red-500/10 border border-red-500/30 text-red-400 text-xs rounded p-2.5 mb-6 text-center"
-        >
+        <div v-if="errorMessage" class="error-alert">
           {{ errorMessage }}
         </div>
 
         <!-- 成功提示畫面 -->
-        <div
-          v-if="isSuccess"
-          class="flex flex-col items-center gap-4 text-center py-4"
-        >
-          <div
-            class="w-12 h-12 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 text-2xl"
-          >
-            ✓
-          </div>
-          <div class="text-slate-200 text-sm font-semibold">
-            重設信件已寄出！
-          </div>
-          <div class="text-xs text-slate-400 leading-relaxed">
+        <div v-if="isSuccess" class="success-container">
+          <div class="success-icon">✓</div>
+          <div class="success-title">重設信件已寄出！</div>
+          <div class="success-description">
             我們已向您的電子信箱
-            <span class="text-slate-300 font-medium">{{ email }}</span>
+            <span class="success-email">{{ email }}</span>
             寄送了密碼重設連結。<br />
             請前往您的收件匣點擊連結以重新設定密碼（連結有效期限為 15 分鐘）。
           </div>
-          <Button
-            @click="router.push('/login')"
-            class="w-full mt-4 bg-indigo-600 hover:bg-indigo-500 text-white cursor-pointer transition"
-          >
+          <Button @click="router.push('/login')" class="submit-btn">
             返回登入
           </Button>
+          <div class="pb-1"></div>
         </div>
 
         <!-- 忘記密碼表單 -->
@@ -59,7 +42,7 @@
           <FieldSet>
             <FieldGroup>
               <Field>
-                <FieldLabel for="email" class="text-slate-300"
+                <FieldLabel for="email" class="field-label"
                   >請輸入您的註冊電子信箱</FieldLabel
                 >
                 <Input
@@ -68,40 +51,44 @@
                   v-model="email"
                   placeholder="m@example.com"
                   required
-                  class="bg-[var(--bg-darkest)] text-[#dbdee1] border-slate-700 focus-visible:ring-indigo-500"
+                  class="field-input"
                 />
-                <span
-                  v-if="emailError"
-                  class="text-red-400 text-[10px] mt-1 block"
-                  >{{ emailError }}</span
+                <span v-if="emailError" class="field-error-text"
+                  ><WarningFillIcon />{{ emailError }}</span
                 >
               </Field>
             </FieldGroup>
           </FieldSet>
+
+          <div class="twidget">
+            <TurnstileWidget
+              ref="turnstileRef"
+              @verify="onTurnstileVerify"
+              @expire="onTurnstileExpire"
+            />
+          </div>
         </form>
       </CardContent>
 
-      <CardFooter
-        v-if="!isSuccess"
-        class="px-8 pb-8 flex flex-col gap-4 items-center"
-      >
+      <CardFooter v-if="!isSuccess" class="card-footer">
         <Button
           type="submit"
           form="forgot-password-form"
-          :disabled="isLoading"
-          class="w-full max-w-[336px] bg-indigo-600 hover:bg-indigo-500 text-white cursor-pointer transition"
+          :disabled="isLoading || !turnstileToken"
+          class="submit-btn"
         >
-          {{ isLoading ? "發送中..." : "發送重設郵件" }}
+          {{
+            isLoading
+              ? "發送中..."
+              : turnstileToken
+                ? "發送重設郵件"
+                : "Cloudflare Turnstile 驗證中..."
+          }}
         </Button>
 
-        <div class="text-xs text-slate-400 mt-1">
+        <div class="footer-redirect-text">
           記起密碼了？
-          <router-link
-            to="/login"
-            class="text-indigo-400 hover:underline transition ml-1"
-          >
-            返回登入
-          </router-link>
+          <router-link to="/login" class="footer-link"> 返回登入 </router-link>
         </div>
       </CardFooter>
     </Card>
@@ -114,6 +101,8 @@ import { useRouter } from "vue-router";
 import { forgotPassword } from "@/api/generated";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import TurnstileWidget from "@/components/TurnstileWidget.vue";
+import WarningFillIcon from "~icons/mingcute/warning-fill";
 import {
   Card,
   CardHeader,
@@ -130,6 +119,17 @@ const errorMessage = ref("");
 const isSuccess = ref(false);
 const isLoading = ref(false);
 const router = useRouter();
+
+const turnstileRef = ref<any>(null);
+const turnstileToken = ref("");
+
+const onTurnstileVerify = (token: string) => {
+  turnstileToken.value = token;
+};
+
+const onTurnstileExpire = () => {
+  turnstileToken.value = "";
+};
 
 watch(email, () => {
   emailError.value = "";
@@ -157,12 +157,20 @@ const handleForgotPassword = async () => {
   isLoading.value = true;
   try {
     await forgotPassword({
-      body: { email: email.value },
+      body: {
+        email: email.value,
+        turnstileToken: turnstileToken.value,
+      },
       throwOnError: true,
     });
     isSuccess.value = true;
   } catch (err: any) {
     console.error("忘記密碼請求失敗:", err);
+
+    // 💡 請求失敗時，需重設人機驗證
+    turnstileRef.value?.reset();
+    turnstileToken.value = "";
+
     if (err?.status === 429) {
       errorMessage.value = "發送過於頻繁，請在 60 秒後再試。";
     } else if (err?.body?.errors?.email) {
@@ -181,23 +189,196 @@ const handleForgotPassword = async () => {
 .forgot-password-page {
   width: 100%;
   height: 100%;
+  min-height: 100vh;
+  overflow-y: auto;
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 40px 16px;
+  box-sizing: border-box;
   background: radial-gradient(
     circle at center,
-    var(--bg-darker) 0%,
-    var(--bg-black) 100%
+    var(--bg-surface) 0%,
+    var(--bg-surface) 100%
   );
 }
 
 .forgot-password-card {
   width: 100%;
   max-width: 400px;
-  background: rgba(43, 45, 49, 0.7) !important;
-  border-radius: 12px;
+  background: var(--bg-surface-light) !important;
+  border-radius: 22px;
   box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
   backdrop-filter: blur(12px);
-  transform: translateY(-20px);
+  border: 1px solid var(--bg-surface-light-border) !important;
+}
+
+.card-header {
+  text-align: center;
+  padding-top: 32px;
+  padding-bottom: 24px;
+}
+
+.card-title {
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  background: #ffffff;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: #ffffff;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.card-title:hover {
+  opacity: 0.9;
+}
+
+.card-description {
+  font-size: 12px;
+  color: var(--bg-surface-light-text-muted);
+  margin-top: 6px;
+}
+
+.card-content {
+  padding-left: 32px;
+  padding-right: 32px;
+  padding-bottom: 0;
+}
+
+.error-alert {
+  background-color: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #f87171;
+  font-size: 12px;
+  border-radius: 4px;
+  padding: 10px;
+  margin-bottom: 24px;
+  text-align: center;
+}
+
+.success-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  text-align: center;
+  padding-top: 16px;
+  padding-bottom: 16px;
+}
+
+.success-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background-color: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #34d399;
+  font-size: 24px;
+}
+
+.success-title {
+  color: #e2e8f0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.success-description {
+  font-size: 12px;
+  color: #94a3b8;
+  line-height: 1.625;
+}
+
+.success-email {
+  color: #cbd5e1;
+  font-weight: 500;
+}
+
+.field-label {
+  color: #ffffff;
+  font-size: 15px;
+}
+
+.field-input {
+  background-color: var(--bg-surface) !important;
+  color: var(--bg-surface-text-muted) !important;
+  border-color: var(--bg-surface-light-border) !important;
+  border-radius: 8px;
+  font-size: 14px;
+  padding: 2px 16px;
+}
+
+.field-input:focus-visible {
+  outline: none !important;
+  box-shadow: 0 0 0 2px #ffffff !important;
+}
+
+.field-error-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--error);
+  font-size: 13px;
+  margin-top: -4px;
+}
+
+.twidget {
+  margin-top: 16px;
+  margin-bottom: 16px;
+}
+
+.submit-btn {
+  width: 100%;
+  margin-top: 0px;
+  background-color: var(--primary) !important;
+  color: #ffffff !important;
+  cursor: pointer;
+  transition:
+    background-color 0.2s ease,
+    opacity 0.2s ease;
+  border: none !important;
+  font-size: 16px;
+  border-radius: 8px;
+  max-width: 336px;
+}
+
+.submit-btn:hover:not(:disabled) {
+  background-color: var(--primary-muted) !important;
+}
+
+.submit-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.card-footer {
+  padding-left: 32px;
+  padding-right: 32px;
+  padding-bottom: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  align-items: center;
+}
+
+.footer-redirect-text {
+  font-size: 14px;
+  color: #ffffff;
+  margin-top: 4px;
+}
+
+.footer-link {
+  color: var(--primary-light);
+  text-decoration: none;
+  transition: text-decoration 0.2s ease;
+  margin-left: 4px;
+}
+
+.footer-link:hover {
+  text-decoration: underline;
 }
 </style>

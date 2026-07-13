@@ -40,6 +40,7 @@
       <div
         v-else-if="
           !store.isLoading &&
+          store.activeServerId &&
           store.servers.length > 0 &&
           store.channels.length === 0
         "

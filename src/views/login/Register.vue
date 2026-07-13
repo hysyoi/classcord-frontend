@@ -1,50 +1,32 @@
 <template>
   <div class="register-page">
-    <Card class="register-card border-none">
-      <CardHeader class="text-center pb-6 pt-8">
-        <CardTitle
-          @click="router.push('/')"
-          class="text-3xl font-extrabold tracking-wider bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent cursor-pointer hover:opacity-90 transition"
-        >
+    <Card class="register-card">
+      <CardHeader class="card-header">
+        <CardTitle @click="router.push('/')" class="card-title">
           ClassCord
         </CardTitle>
-        <CardDescription class="text-xs text-slate-400 mt-1.5">
-          建立一個新帳號以加入 ClassCord 聊天社群
+        <CardDescription class="card-description">
+          建立一個新帳號以加入 ClassCord 社群
         </CardDescription>
       </CardHeader>
 
-      <CardContent class="px-8 pb-4">
+      <CardContent class="card-content">
         <!-- 錯誤提示 -->
-        <div
-          v-if="errorMessage"
-          class="bg-red-500/10 border border-red-500/30 text-red-400 text-xs rounded p-2.5 mb-6 text-center"
-        >
+        <div v-if="errorMessage" class="error-alert">
           {{ errorMessage }}
         </div>
 
         <!-- 成功提示畫面 -->
-        <div
-          v-if="isSuccess"
-          class="flex flex-col items-center gap-4 text-center py-4"
-        >
-          <div
-            class="w-12 h-12 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 text-2xl"
-          >
-            ✓
-          </div>
-          <div class="text-slate-200 text-sm font-semibold">
-            註冊申請已受理！
-          </div>
-          <div class="text-xs text-slate-400 leading-relaxed">
+        <div v-if="isSuccess" class="success-container">
+          <div class="success-icon">✓</div>
+          <div class="success-title">註冊申請已受理！</div>
+          <div class="success-description">
             我們已向您的電子信箱
-            <span class="text-slate-300 font-medium">{{ email }}</span>
+            <span class="success-email">{{ email }}</span>
             寄送了帳號啟用信。<br />
             請前往您的收件匣點擊驗證連結以正式開通帳號。
           </div>
-          <Button
-            @click="router.push('/login')"
-            class="w-full mt-4 bg-indigo-600 hover:bg-indigo-500 text-white cursor-pointer transition"
-          >
+          <Button @click="router.push('/login')" class="submit-btn">
             前往登入頁
           </Button>
         </div>
@@ -59,59 +41,68 @@
           <FieldSet>
             <FieldGroup>
               <Field>
-                <FieldLabel for="username" class="text-slate-300"
+                <FieldLabel for="username" class="field-label"
                   >使用者名稱</FieldLabel
                 >
                 <Input
                   id="username"
                   type="text"
                   v-model="username"
-                  placeholder="想一個帥氣的名字..."
+                  placeholder=""
                   required
-                  class="bg-[var(--bg-darkest)] text-[#dbdee1] border-slate-700 focus-visible:ring-indigo-500"
+                  class="field-input"
                 />
-                <span
-                  v-if="errors.username"
-                  class="text-red-400 text-[10px] mt-1 block"
-                  >{{ errors.username }}</span
+                <span v-if="errors.username" class="field-error-text"
+                  ><WarningFillIcon />{{ errors.username }}</span
                 >
               </Field>
 
               <Field>
-                <FieldLabel for="email" class="text-slate-300"
+                <FieldLabel for="email" class="field-label"
                   >電子信箱</FieldLabel
                 >
                 <Input
                   id="email"
                   type="email"
                   v-model="email"
-                  placeholder="m@example.com"
+                  placeholder=""
                   required
-                  class="bg-[var(--bg-darkest)] text-[#dbdee1] border-slate-700 focus-visible:ring-indigo-500"
+                  class="field-input"
                 />
-                <span
-                  v-if="errors.email"
-                  class="text-red-400 text-[10px] mt-1 block"
-                  >{{ errors.email }}</span
+                <span v-if="errors.email" class="field-error-text"
+                  ><WarningFillIcon />{{ errors.email }}</span
                 >
               </Field>
 
               <Field>
-                <FieldLabel for="password" class="text-slate-300"
-                  >密碼</FieldLabel
-                >
-                <Input
-                  id="password"
-                  type="password"
-                  v-model="password"
-                  placeholder="密碼長度需為 8~100 位字元"
-                  required
-                  class="bg-[var(--bg-darkest)] text-[#dbdee1] border-slate-700 focus-visible:ring-indigo-500"
-                />
-                <span
-                  v-if="errors.password"
-                  class="text-red-400 text-[10px] mt-1 block"
-                  >{{ errors.password }}</span
+                <FieldLabel for="password" class="field-label">密碼</FieldLabel>
+                <div class="password-input-wrapper">
+                  <Input
+                    id="password"
+                    :type="showPassword ? 'text' : 'password'"
+                    v-model="password"
+                    placeholder=""
+                    required
+                    class="field-input password-input"
+                  />
+                  <button
+                    type="button"
+                    class="password-toggle-btn"
+                    @click="showPassword = !showPassword"
+                  >
+                    <EyeOff v-if="showPassword" class="eye-icon" />
+                    <Eye v-else class="eye-icon" />
+                  </button>
+                </div>
+                <!--                <div class="password-input-info">-->
+                <!--                  密碼必須包含：<br></br>-->
+                <!--                  一個大寫字母<br></br>-->
+                <!--                  一個小寫字母<br></br>-->
+                <!--                  一個數字和<br></br>-->
+                <!--                  一個特殊符號-->
+                <!--                </div>-->
+                <span v-if="errors.password" class="field-error-text"
+                  ><WarningFillIcon />{{ errors.password }}</span
                 >
               </Field>
             </FieldGroup>
@@ -126,7 +117,7 @@
           <Button
             type="submit"
             :disabled="isLoading || !turnstileToken"
-            class="w-full mt-4 bg-indigo-600 hover:bg-indigo-500 text-white cursor-pointer transition disabled:opacity-50 disabled:cursor-not-allowed"
+            class="submit-btn"
           >
             {{
               isLoading
@@ -139,30 +130,20 @@
         </form>
       </CardContent>
 
-      <CardFooter
-        v-if="!isSuccess"
-        class="px-8 pb-8 flex flex-col gap-4 items-center"
-      >
+      <CardFooter v-if="!isSuccess" class="card-footer">
         <!-- 分割線 -->
-        <div class="relative flex py-1 items-center w-full max-w-[336px]">
-          <div class="flex-grow border-t border-slate-700/50"></div>
-          <span
-            class="flex-shrink mx-4 text-[10px] text-slate-500 uppercase tracking-wider font-semibold"
-            >或者使用以下方式快速註冊</span
-          >
-          <div class="flex-grow border-t border-slate-700/50"></div>
+        <div class="divider-wrapper">
+          <div class="divider-line"></div>
+          <span class="divider-text">或者使用以下方式快速註冊</span>
+          <div class="divider-line"></div>
         </div>
 
         <!-- 第三方快速註冊按鈕群組 -->
-        <div class="flex flex-col gap-2.5 w-full max-w-[336px]">
+        <div class="oauth-buttons">
           <!-- Google 官方品牌按鈕 -->
-          <Button
-            @click="loginWithGoogle"
-            type="button"
-            class="relative w-full h-10 bg-[var(--bg-darkest)] hover:bg-[var(--bg-darker)] text-white font-medium transition cursor-pointer flex items-center justify-center rounded border border-slate-700/80 shadow-md"
-          >
+          <Button @click="loginWithGoogle" type="button" class="google-btn">
             <svg
-              class="absolute left-4 h-4 w-4"
+              class="oauth-icon"
               aria-hidden="true"
               focusable="false"
               role="img"
@@ -190,13 +171,9 @@
           </Button>
 
           <!-- GitHub 官方品牌按鈕 -->
-          <Button
-            @click="loginWithGithub"
-            type="button"
-            class="relative w-full h-10 bg-[#24292F] hover:bg-[#24292F]/90 text-white font-medium transition cursor-pointer flex items-center justify-center rounded border-none shadow-md"
-          >
+          <Button @click="loginWithGithub" type="button" class="github-btn">
             <svg
-              class="absolute left-4 h-4 w-4"
+              class="oauth-icon"
               aria-hidden="true"
               focusable="false"
               role="img"
@@ -212,13 +189,9 @@
           </Button>
 
           <!-- Discord 官方品牌按鈕 -->
-          <Button
-            @click="loginWithDiscord"
-            type="button"
-            class="relative w-full h-10 bg-[#5865F2] hover:bg-[#5865F2]/90 text-white font-medium transition cursor-pointer flex items-center justify-center rounded border-none shadow-md"
-          >
+          <Button @click="loginWithDiscord" type="button" class="discord-btn">
             <svg
-              class="absolute left-4 h-4.5 w-4.5"
+              class="discord-icon"
               aria-hidden="true"
               focusable="false"
               role="img"
@@ -234,14 +207,9 @@
           </Button>
         </div>
 
-        <div class="text-xs text-slate-400 mt-3">
+        <div class="footer-redirect-text">
           已經有帳號了？
-          <router-link
-            to="/login"
-            class="text-indigo-400 hover:underline transition ml-1"
-          >
-            登入
-          </router-link>
+          <router-link to="/login" class="footer-link"> 點此登入 </router-link>
         </div>
       </CardFooter>
     </Card>
@@ -255,6 +223,9 @@ import { register } from "@/api/generated";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import TurnstileWidget from "@/components/TurnstileWidget.vue";
+import WarningFillIcon from "~icons/mingcute/warning-fill";
+import { Eye, EyeOff } from "lucide-vue-next";
+
 import {
   Card,
   CardHeader,
@@ -268,6 +239,7 @@ import { Field, FieldGroup, FieldLabel, FieldSet } from "@/components/ui/field";
 const username = ref("");
 const email = ref("");
 const password = ref("");
+const showPassword = ref(false);
 const errorMessage = ref("");
 const isSuccess = ref(false);
 const isLoading = ref(false);
@@ -428,17 +400,332 @@ const loginWithDiscord = () => {
   box-sizing: border-box;
   background: radial-gradient(
     circle at center,
-    var(--bg-darker) 0%,
-    var(--bg-black) 100%
+    var(--bg-surface) 0%,
+    var(--bg-surface) 100%
   );
 }
 
 .register-card {
   width: 100%;
   max-width: 400px;
-  background: rgba(43, 45, 49, 0.7) !important;
-  border-radius: 12px;
+  background: var(--bg-surface-light) !important;
+  border-radius: 22px;
   box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
   backdrop-filter: blur(12px);
+  border: 1px solid var(--bg-surface-light-border) !important;
+}
+
+.card-header {
+  text-align: center;
+  padding-top: 32px;
+  padding-bottom: 24px;
+}
+
+.card-title {
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  background: #ffffff;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: #ffffff;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.card-title:hover {
+  opacity: 0.9;
+}
+
+.card-description {
+  font-size: 12px;
+  color: var(--bg-surface-light-text-muted);
+  margin-top: 6px;
+}
+
+.card-content {
+  padding-left: 32px;
+  padding-right: 32px;
+  padding-bottom: 16px;
+}
+
+.error-alert {
+  background-color: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #f87171;
+  font-size: 12px;
+  border-radius: 8px;
+  padding: 10px;
+  margin-bottom: 24px;
+  text-align: center;
+}
+
+.success-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  text-align: center;
+  padding-top: 16px;
+  padding-bottom: 16px;
+}
+
+.success-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background-color: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #34d399;
+  font-size: 24px;
+}
+
+.success-title {
+  color: #e2e8f0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.success-description {
+  font-size: 12px;
+  color: #94a3b8;
+  line-height: 1.625;
+}
+
+.success-email {
+  color: #cbd5e1;
+  font-weight: 500;
+}
+
+.field-label {
+  color: #ffffff;
+  font-size: 15px;
+}
+
+.field-input {
+  background-color: var(--bg-surface) !important;
+  color: var(--bg-surface-text-muted) !important;
+  border-color: var(--bg-surface-light-border) !important;
+  border-radius: 8px;
+  font-size: 14px;
+  padding: 2px 16px;
+}
+
+.password-input-wrapper {
+  position: relative;
+  width: 100%;
+  display: flex;
+  align-items: center;
+}
+
+.password-input-info {
+  font-size: 12px;
+  padding: 5px;
+  color: var(--bg-surface-text-muted);
+}
+
+.password-toggle-btn {
+  position: absolute;
+  right: 12px;
+  background: transparent;
+  border: none;
+  color: var(--bg-surface-text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: color 0.2s ease;
+}
+
+.password-toggle-btn:hover {
+  color: #ffffff;
+}
+
+.eye-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.password-input {
+  padding-right: 40px !important;
+}
+
+.field-input:focus-visible {
+  outline: none !important;
+  box-shadow: 0 0 0 2px #ffffff !important;
+}
+
+.field-error-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--error);
+  font-size: 13px;
+  margin-top: -4px;
+}
+
+.submit-btn {
+  width: 100%;
+  margin-top: 32px;
+  background-color: var(--primary) !important;
+  color: #ffffff !important;
+  cursor: pointer;
+  transition:
+    background-color 0.2s ease,
+    opacity 0.2s ease;
+  border: none !important;
+  font-size: 16px;
+  border-radius: 8px;
+}
+
+.submit-btn:hover:not(:disabled) {
+  background-color: var(--primary-muted) !important;
+}
+
+.submit-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.card-footer {
+  padding-left: 32px;
+  padding-right: 32px;
+  padding-bottom: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  align-items: center;
+}
+
+.divider-wrapper {
+  position: relative;
+  display: flex;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  align-items: center;
+  width: 100%;
+  max-width: 336px;
+}
+
+.divider-line {
+  flex-grow: 1;
+  border-top: 1px solid var(--bg-surface-light-border);
+}
+
+.divider-text {
+  flex-shrink: 0;
+  margin-left: 16px;
+  margin-right: 16px;
+  font-size: 10px;
+  color: var(--bg-surface-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+}
+
+.oauth-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  max-width: 336px;
+}
+
+.google-btn {
+  position: relative;
+  width: 100%;
+  height: 40px;
+  background-color: var(--bg-surface) !important;
+  color: #ffffff !important;
+  font-weight: 500;
+  transition: background-color 0.2s ease;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px !important;
+  border: 1px solid var(--bg-surface-light-border) !important;
+}
+
+.google-btn:hover {
+  background-color: var(--bg-surface-light-border) !important;
+}
+
+.oauth-icon {
+  position: absolute;
+  left: 16px;
+  height: 16px;
+  width: 16px;
+}
+
+.github-btn {
+  position: relative;
+  width: 100%;
+  height: 40px;
+  background-color: var(--bg-surface) !important;
+  color: #ffffff !important;
+  font-weight: 500;
+  transition: background-color 0.2s ease;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px !important;
+  border: 1px solid var(--bg-surface-light-border) !important;
+}
+
+.github-btn:hover {
+  background-color: var(--bg-surface-light-border) !important;
+}
+
+.discord-btn {
+  position: relative;
+  width: 100%;
+  height: 40px;
+  background-color: #5865f2 !important;
+  color: #ffffff !important;
+  font-weight: 500;
+  transition: background-color 0.2s ease;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px !important;
+  border: none !important;
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.discord-btn:hover {
+  background-color: rgba(88, 101, 242, 0.9) !important;
+}
+
+.discord-icon {
+  position: absolute;
+  left: 16px;
+  height: 18px;
+  width: 18px;
+}
+
+.footer-redirect-text {
+  font-size: 14px;
+  color: #ffffff;
+  margin-top: 4px;
+}
+
+.footer-link {
+  color: var(--primary-light);
+  text-decoration: none;
+  transition: text-decoration 0.2s ease;
+  margin-left: 4px;
+}
+
+.footer-link:hover {
+  text-decoration: underline;
 }
 </style>

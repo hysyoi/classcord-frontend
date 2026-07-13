@@ -1,46 +1,30 @@
 <template>
   <div class="reset-password-page">
-    <Card class="reset-password-card border-none">
-      <CardHeader class="text-center pb-6 pt-8">
-        <CardTitle
-          @click="router.push('/')"
-          class="text-3xl font-extrabold tracking-wider bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent cursor-pointer hover:opacity-90 transition"
-        >
+    <Card class="reset-password-card">
+      <CardHeader class="card-header">
+        <CardTitle @click="router.push('/')" class="card-title">
           ClassCord
         </CardTitle>
-        <CardDescription class="text-xs text-slate-400 mt-1.5">
+        <CardDescription class="card-description">
           重新設定您的新密碼
         </CardDescription>
       </CardHeader>
 
-      <CardContent class="px-8 pb-6">
+      <CardContent class="card-content">
         <!-- 錯誤提示 -->
-        <div
-          v-if="errorMessage"
-          class="bg-red-500/10 border border-red-500/30 text-red-400 text-xs rounded p-2.5 mb-6 text-center"
-        >
+        <div v-if="errorMessage" class="error-alert">
           {{ errorMessage }}
         </div>
 
         <!-- 成功提示畫面 -->
-        <div
-          v-if="isSuccess"
-          class="flex flex-col items-center gap-4 text-center py-4"
-        >
-          <div
-            class="w-12 h-12 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 text-2xl"
-          >
-            ✓
-          </div>
-          <div class="text-slate-200 text-sm font-semibold">密碼重設成功！</div>
-          <div class="text-xs text-slate-400 leading-relaxed">
+        <div v-if="isSuccess" class="success-container">
+          <div class="success-icon">✓</div>
+          <div class="success-title">密碼重設成功！</div>
+          <div class="success-description">
             您的帳戶密碼已成功更新。<br />
             系統將在 3 秒後自動導向登入頁面...
           </div>
-          <Button
-            @click="router.push('/login')"
-            class="w-full mt-4 bg-indigo-600 hover:bg-indigo-500 text-white cursor-pointer transition"
-          >
+          <Button @click="router.push('/login')" class="submit-btn">
             立即前往登入
           </Button>
         </div>
@@ -55,40 +39,56 @@
           <FieldSet>
             <FieldGroup>
               <Field>
-                <FieldLabel for="new-password" class="text-slate-300"
+                <FieldLabel for="new-password" class="field-label"
                   >輸入新密碼</FieldLabel
                 >
-                <Input
-                  id="new-password"
-                  type="password"
-                  v-model="newPassword"
-                  placeholder="新密碼需為 8~100 位字元"
-                  required
-                  class="bg-[var(--bg-darkest)] text-[#dbdee1] border-slate-700 focus-visible:ring-indigo-500"
-                />
-                <span
-                  v-if="errors.newPassword"
-                  class="text-red-400 text-[10px] mt-1 block"
-                  >{{ errors.newPassword }}</span
+                <div class="password-input-wrapper">
+                  <Input
+                    id="new-password"
+                    :type="showNewPassword ? 'text' : 'password'"
+                    v-model="newPassword"
+                    placeholder="新密碼需為 8~100 位字元"
+                    required
+                    class="field-input password-input"
+                  />
+                  <button
+                    type="button"
+                    class="password-toggle-btn"
+                    @click="showNewPassword = !showNewPassword"
+                  >
+                    <EyeOff v-if="showNewPassword" class="eye-icon" />
+                    <Eye v-else class="eye-icon" />
+                  </button>
+                </div>
+                <span v-if="errors.newPassword" class="field-error-text"
+                  ><WarningFillIcon />{{ errors.newPassword }}</span
                 >
               </Field>
 
               <Field>
-                <FieldLabel for="confirm-password" class="text-slate-300"
+                <FieldLabel for="confirm-password" class="field-label"
                   >確認新密碼</FieldLabel
                 >
-                <Input
-                  id="confirm-password"
-                  type="password"
-                  v-model="confirmPassword"
-                  placeholder="請再次輸入新密碼"
-                  required
-                  class="bg-[var(--bg-darkest)] text-[#dbdee1] border-slate-700 focus-visible:ring-indigo-500"
-                />
-                <span
-                  v-if="errors.confirmPassword"
-                  class="text-red-400 text-[10px] mt-1 block"
-                  >{{ errors.confirmPassword }}</span
+                <div class="password-input-wrapper">
+                  <Input
+                    id="confirm-password"
+                    :type="showConfirmPassword ? 'text' : 'password'"
+                    v-model="confirmPassword"
+                    placeholder="請再次輸入新密碼"
+                    required
+                    class="field-input password-input"
+                  />
+                  <button
+                    type="button"
+                    class="password-toggle-btn"
+                    @click="showConfirmPassword = !showConfirmPassword"
+                  >
+                    <EyeOff v-if="showConfirmPassword" class="eye-icon" />
+                    <Eye v-else class="eye-icon" />
+                  </button>
+                </div>
+                <span v-if="errors.confirmPassword" class="field-error-text"
+                  ><WarningFillIcon />{{ errors.confirmPassword }}</span
                 >
               </Field>
             </FieldGroup>
@@ -96,15 +96,12 @@
         </form>
       </CardContent>
 
-      <CardFooter
-        v-if="!isSuccess"
-        class="px-8 pb-8 flex flex-col gap-4 items-center"
-      >
+      <CardFooter v-if="!isSuccess" class="card-footer">
         <Button
           type="submit"
           form="reset-password-form"
           :disabled="isLoading"
-          class="w-full max-w-[336px] bg-indigo-600 hover:bg-indigo-500 text-white cursor-pointer transition"
+          class="submit-btn"
         >
           {{ isLoading ? "儲存中..." : "儲存新密碼" }}
         </Button>
@@ -128,9 +125,13 @@ import {
   CardFooter,
 } from "@/components/ui/card";
 import { Field, FieldGroup, FieldLabel, FieldSet } from "@/components/ui/field";
+import WarningFillIcon from "~icons/mingcute/warning-fill";
+import { Eye, EyeOff } from "lucide-vue-next";
 
 const newPassword = ref("");
 const confirmPassword = ref("");
+const showNewPassword = ref(false);
+const showConfirmPassword = ref(false);
 const token = ref("");
 const errorMessage = ref("");
 const isSuccess = ref(false);
@@ -225,23 +226,203 @@ const handleResetPassword = async () => {
 .reset-password-page {
   width: 100%;
   height: 100%;
+  min-height: 100vh;
+  overflow-y: auto;
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 40px 16px;
+  box-sizing: border-box;
   background: radial-gradient(
     circle at center,
-    var(--bg-darker) 0%,
-    var(--bg-black) 100%
+    var(--bg-surface) 0%,
+    var(--bg-surface) 100%
   );
 }
 
 .reset-password-card {
   width: 100%;
   max-width: 400px;
-  background: rgba(43, 45, 49, 0.7) !important;
-  border-radius: 12px;
+  background: var(--bg-surface-light) !important;
+  border-radius: 22px;
   box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
   backdrop-filter: blur(12px);
-  transform: translateY(-20px);
+  border: 1px solid var(--bg-surface-light-border) !important;
+}
+
+.card-header {
+  text-align: center;
+  padding-top: 32px;
+  padding-bottom: 24px;
+}
+
+.card-title {
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  background: #ffffff;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: #ffffff;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.card-title:hover {
+  opacity: 0.9;
+}
+
+.card-description {
+  font-size: 12px;
+  color: var(--bg-surface-light-text-muted);
+  margin-top: 6px;
+}
+
+.card-content {
+  padding-left: 32px;
+  padding-right: 32px;
+  padding-bottom: 16px;
+}
+
+.error-alert {
+  background-color: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #f87171;
+  font-size: 12px;
+  border-radius: 8px;
+  padding: 10px;
+  margin-bottom: 24px;
+  text-align: center;
+}
+
+.success-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  text-align: center;
+  padding-top: 16px;
+  padding-bottom: 16px;
+}
+
+.success-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background-color: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #34d399;
+  font-size: 24px;
+}
+
+.success-title {
+  color: #e2e8f0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.success-description {
+  font-size: 12px;
+  color: #94a3b8;
+  line-height: 1.625;
+}
+
+.field-label {
+  color: #ffffff;
+  font-size: 15px;
+}
+
+.field-input {
+  background-color: var(--bg-surface) !important;
+  color: var(--bg-surface-text-muted) !important;
+  border-color: var(--bg-surface-light-border) !important;
+  border-radius: 8px;
+  font-size: 14px;
+  padding: 2px 16px;
+}
+
+.password-input-wrapper {
+  position: relative;
+  width: 100%;
+  display: flex;
+  align-items: center;
+}
+
+.password-toggle-btn {
+  position: absolute;
+  right: 12px;
+  background: transparent;
+  border: none;
+  color: var(--bg-surface-text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: color 0.2s ease;
+}
+
+.password-toggle-btn:hover {
+  color: #ffffff;
+}
+
+.eye-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.password-input {
+  padding-right: 40px !important;
+}
+
+.field-input:focus-visible {
+  outline: none !important;
+  box-shadow: 0 0 0 2px #ffffff !important;
+}
+
+.field-error-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--error);
+  font-size: 13px;
+  margin-top: -4px;
+}
+
+.submit-btn {
+  width: 100%;
+  margin-top: 12px;
+  background-color: var(--primary) !important;
+  color: #ffffff !important;
+  cursor: pointer;
+  transition:
+    background-color 0.2s ease,
+    opacity 0.2s ease;
+  border: none !important;
+  font-size: 16px;
+  border-radius: 8px;
+  max-width: 336px;
+}
+
+.submit-btn:hover:not(:disabled) {
+  background-color: var(--primary-muted) !important;
+}
+
+.submit-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.card-footer {
+  padding-left: 32px;
+  padding-right: 32px;
+  padding-bottom: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  align-items: center;
 }
 </style>

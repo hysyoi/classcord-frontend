@@ -192,6 +192,7 @@ export type LoginRequest = {
 
 export type ForgotPasswordRequest = {
   email: string;
+  turnstileToken: string;
 };
 
 export type UserProfileResponse = {

@@ -4,7 +4,7 @@
       <div v-if="state === 'loading'" class="loading-state">
         <div class="spinner"></div>
         <h2>正在加入班級...</h2>
-        <p>請稍候，我們正在為您辦理入學手續 🎓</p>
+        <p>請稍候，我們正在為您辦理入學手續～</p>
       </div>
 
       <div v-else-if="state === 'success'" class="success-state">
@@ -39,6 +39,18 @@ const state = ref<"loading" | "success" | "error">("loading");
 const errorMessage = ref("");
 
 onMounted(async () => {
+  // 💡 開發調試輔助：允許在 URL 加上 ?mockState=loading|success|error 直接預覽效果
+  if (import.meta.env.DEV) {
+    const mock = route.query.mockState as "loading" | "success" | "error";
+    if (mock) {
+      state.value = mock;
+      if (mock === "error") {
+        errorMessage.value = "這是一條開發調試專用的模擬錯誤訊息！";
+      }
+      return;
+    }
+  }
+
   const serverId = route.params.serverId as string;
   if (!serverId) {
     state.value = "error";
@@ -102,8 +114,8 @@ onMounted(async () => {
   justify-content: center;
   background: radial-gradient(
     circle at center,
-    var(--bg-darker) 0%,
-    var(--bg-black) 100%
+    var(--bg-surface) 0%,
+    var(--bg-surface) 100%
   );
   color: #dbdee1;
 }
@@ -111,9 +123,9 @@ onMounted(async () => {
 .join-card {
   width: 100%;
   max-width: 420px;
-  background: rgba(43, 45, 49, 0.75);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 16px;
+  background: var(--bg-surface-light) !important;
+  border: 1px solid var(--bg-surface-light-border) !important;
+  border-radius: 22px;
   padding: 40px 32px;
   text-align: center;
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
@@ -124,12 +136,12 @@ h2 {
   font-size: 20px;
   font-weight: 600;
   margin-bottom: 12px;
-  color: #f2f3f5;
+  color: #ffffff;
 }
 
 p {
   font-size: 14px;
-  color: #949ba4;
+  color: var(--bg-surface-light-text-muted);
   line-height: 1.5;
 }
 
@@ -146,7 +158,7 @@ p {
   width: 48px;
   height: 48px;
   border: 4px solid rgba(255, 255, 255, 0.1);
-  border-left-color: var(--brand-color);
+  border-left-color: var(--primary);
   border-radius: 50%;
   animation: spin 1s linear infinite;
   margin-bottom: 8px;
@@ -159,51 +171,59 @@ p {
 }
 
 .icon-success {
-  width: 56px;
-  height: 56px;
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
-  background: rgba(35, 165, 90, 0.15);
-  color: #23a55a;
-  font-size: 28px;
+  background-color: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.3);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: bold;
+  color: #34d399;
+  font-size: 24px;
   margin-bottom: 8px;
 }
 
 .icon-error {
-  width: 56px;
-  height: 56px;
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
-  background: rgba(242, 63, 66, 0.15);
-  color: #f23f42;
-  font-size: 32px;
+  background-color: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
   display: flex;
   align-items: center;
   justify-content: center;
+  color: #f87171;
+  font-size: 24px;
   margin-bottom: 8px;
 }
 
 .error-msg {
-  color: #f23f42;
-  font-size: 13px;
+  background-color: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #f87171;
+  font-size: 12px;
+  border-radius: 8px;
+  padding: 10px;
+  text-align: center;
 }
 
 .btn-home {
   margin-top: 12px;
-  background: var(--brand-color);
-  color: white;
-  border: none;
+  background-color: var(--primary) !important;
+  color: #ffffff !important;
+  border: none !important;
   padding: 10px 24px;
-  border-radius: 4px;
+  border-radius: 8px;
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
-  transition: background 0.15s;
+  transition:
+    background-color 0.2s ease,
+    opacity 0.2s ease;
 }
 
 .btn-home:hover {
-  background: var(--brand-hover);
+  background-color: var(--primary-muted) !important;
 }
 </style>
