@@ -90,6 +90,30 @@ export const useAppStore = defineStore("app", () => {
   const isManagingPool = ref(false);
   const isAiLimitDialogOpen = ref(false);
 
+  const globalNotice = ref({
+    isOpen: false,
+    title: '系統流量管制提示',
+    message: '',
+    code: '',
+  });
+
+  function showGlobalNotice(
+    message: string,
+    code: string = '',
+    title: string = '系統流量管制提示',
+  ) {
+    globalNotice.value = {
+      isOpen: true,
+      title,
+      message,
+      code,
+    };
+  }
+
+  function closeGlobalNotice() {
+    globalNotice.value.isOpen = false;
+  }
+
   const avatarColors = ref<string[]>([
     "#588b8b",
     "#f5e4d7",
@@ -252,6 +276,14 @@ export const useAppStore = defineStore("app", () => {
 
     stompClient = new Client({
       brokerURL: import.meta.env.VITE_WS_URL || "ws://localhost:8080/ws",
+      beforeConnect: () => {
+        const freshToken = localStorage.getItem("token");
+        if (freshToken && stompClient) {
+          stompClient.connectHeaders = {
+            Authorization: `Bearer ${freshToken}`,
+          };
+        }
+      },
       connectHeaders: {
         Authorization: `Bearer ${token}`,
       },
@@ -263,7 +295,14 @@ export const useAppStore = defineStore("app", () => {
         subscribeToActiveServer();
       },
       onStompError: (frame) => {
-        console.error("STOMP 協議錯誤:", frame.headers["message"]);
+        const errorMsg = frame.headers["message"] || "";
+        console.error("STOMP 協議錯誤:", errorMsg);
+        if (errorMsg.includes("認證") || errorMsg.includes("失效")) {
+          console.warn("WebSocket 憑證失效，自動清除憑證並導向登入頁面");
+          disconnectWebSocket();
+          localStorage.removeItem("token");
+          router.push("/login");
+        }
       },
       onWebSocketClose: () => {
         console.warn("WebSocket 連線關閉");
@@ -870,6 +909,13 @@ export const useAppStore = defineStore("app", () => {
             if (errBody && errBody.code === "AI_001") {
               throw new Error("AI_LIMIT_EXCEEDED");
             }
+            if (errBody && errBody.code && errBody.code.startsWith("SYS_")) {
+              showGlobalNotice(
+                errBody.message || "目前系統繁忙，請稍候再試！",
+                errBody.code,
+              );
+              return;
+            }
           } catch (e: any) {
             if (e.message === "AI_LIMIT_EXCEEDED") throw e;
           }
@@ -1331,6 +1377,9 @@ export const useAppStore = defineStore("app", () => {
     isQuizMode,
     isManagingPool,
     isAiLimitDialogOpen,
+    globalNotice,
+    showGlobalNotice,
+    closeGlobalNotice,
     activeQuiz,
     quizReport,
     aiMaterial,

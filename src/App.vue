@@ -1,10 +1,12 @@
 <template>
   <router-view />
   <DevTools />
+  <GlobalNoticeModal />
 </template>
 
 <script lang="ts" setup>
 import DevTools from "@/components/DevTools.vue";
+import GlobalNoticeModal from "@/components/GlobalNoticeModal.vue";
 // 根組件，所有子頁面透過 Vue Router 渲染
 </script>
 
