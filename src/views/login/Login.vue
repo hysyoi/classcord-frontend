@@ -3,7 +3,7 @@
     <Card class="login-card">
       <CardHeader class="card-header">
         <CardTitle @click="router.push('/')" class="card-title">
-          ClassCord
+          歡迎回來！
         </CardTitle>
         <CardDescription class="card-description">
           請在下方輸入您的電子信箱以登入帳號
@@ -400,7 +400,7 @@ const handleOAuthCallback = async (
 }
 
 .card-title {
-  font-size: 30px;
+  font-size: 26px;
   font-weight: 800;
   letter-spacing: 0.05em;
   /*background: linear-gradient(to right, #60a5fa, #818cf8);*/
@@ -687,5 +687,10 @@ const handleOAuthCallback = async (
 
 .footer-link:hover {
   text-decoration: underline;
+}
+
+.logo {
+  width: 1.5rem;
+  height: 1.5rem;
 }
 </style>

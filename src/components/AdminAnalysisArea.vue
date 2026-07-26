@@ -1379,7 +1379,7 @@ onMounted(() => {
   animation: spin 1s linear infinite;
   width: 32px;
   height: 32px;
-  color: #f472b6;
+  color: var(--primary);
   margin-bottom: 8px;
 }
 

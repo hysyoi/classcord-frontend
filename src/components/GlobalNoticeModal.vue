@@ -24,7 +24,9 @@
                 <line x1="12" y1="16" x2="12.01" y2="16"></line>
               </svg>
             </div>
-            <h3 class="notice-title">{{ globalNotice.title || '系統流量管制提示' }}</h3>
+            <h3 class="notice-title">
+              {{ globalNotice.title || "系統流量管制提示" }}
+            </h3>
           </div>
 
           <div class="notice-body">
@@ -43,16 +45,16 @@
 </template>
 
 <script lang="ts" setup>
-import { computed } from 'vue';
-import { useAppStore } from '@/store/useAppStore';
+import { computed } from "vue";
+import { useAppStore } from "@/store/useAppStore";
 
 const store = useAppStore();
 const globalNotice = computed(() => store.globalNotice);
 
 const noticeIconClass = computed(() => {
-  if (store.globalNotice.code === 'SYS_AI_RATE_LIMIT') return 'icon-ai';
-  if (store.globalNotice.code === 'SYS_AUTH_RATE_LIMIT') return 'icon-auth';
-  return 'icon-default';
+  if (store.globalNotice.code === "SYS_AI_RATE_LIMIT") return "icon-ai";
+  if (store.globalNotice.code === "SYS_AUTH_RATE_LIMIT") return "icon-auth";
+  return "icon-default";
 });
 
 function closeNotice() {
@@ -67,8 +69,8 @@ function closeNotice() {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.65);
-  backdrop-filter: blur(8px);
+  background: rgba(0, 0, 0, 0.5);
+  /*backdrop-filter: blur(8px);*/
   display: flex;
   align-items: center;
   justify-content: center;
@@ -78,10 +80,10 @@ function closeNotice() {
 .global-notice-modal {
   width: 90%;
   max-width: 420px;
-  background: #1e1f22;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: var(--bg-main);
+  border: 1px solid var(--bg-main-border);
   border-radius: 16px;
-  padding: 24px;
+  padding: 18px 18px;
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
   display: flex;
   flex-direction: column;
@@ -91,7 +93,7 @@ function closeNotice() {
 .notice-header {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 2px;
 }
 
 .notice-icon-wrapper {
@@ -105,21 +107,23 @@ function closeNotice() {
 }
 
 .icon-ai {
-  background: rgba(138, 43, 226, 0.2);
+  /*background: rgba(138, 43, 226, 0.2);
   color: #a855f7;
-  border: 1px solid rgba(168, 85, 247, 0.4);
+  border: 1px solid rgba(168, 85, 247, 0.4);*/
+  color: #ffffff;
 }
 
 .icon-auth {
-  background: rgba(234, 179, 8, 0.2);
+  /*background: rgba(234, 179, 8, 0.2);
   color: #eab308;
-  border: 1px solid rgba(234, 179, 8, 0.4);
+  border: 1px solid rgba(234, 179, 8, 0.4);*/
+  color: #ffffff;
 }
 
 .icon-default {
-  background: rgba(59, 130, 246, 0.2);
-  color: #3b82f6;
-  border: 1px solid rgba(59, 130, 246, 0.4);
+  /*background: rgba(59, 130, 246, 0.2);*/
+  color: #ffffff;
+  /*border: 1px solid rgba(59, 130, 246, 0.4);*/
 }
 
 .notice-svg-icon {
@@ -129,9 +133,9 @@ function closeNotice() {
 
 .notice-title {
   margin: 0;
-  font-size: 1.15rem;
+  font-size: 1.2rem;
   font-weight: 600;
-  color: #f2f3f5;
+  color: #ffffff;
 }
 
 .notice-body {
@@ -141,7 +145,8 @@ function closeNotice() {
 .notice-message {
   margin: 0;
   font-size: 0.95rem;
-  color: #dbdee1;
+  padding-left: 10px;
+  color: #ffffff;
 }
 
 .notice-footer {
@@ -152,18 +157,20 @@ function closeNotice() {
 
 .notice-confirm-btn {
   padding: 10px 24px;
-  background: #5865f2;
+  background: var(--primary);
   color: #ffffff;
   border: none;
   border-radius: 8px;
   font-size: 0.95rem;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.2s ease, transform 0.1s ease;
+  transition:
+    background 0.2s ease,
+    transform 0.1s ease;
 }
 
 .notice-confirm-btn:hover {
-  background: #4752c4;
+  background: var(--primary-muted);
 }
 
 .notice-confirm-btn:active {
@@ -173,7 +180,7 @@ function closeNotice() {
 /* 進入與離開動畫 */
 .notice-fade-enter-active,
 .notice-fade-leave-active {
-  transition: opacity 0.25s ease, transform 0.25s ease;
+  /*transition: opacity 0.25s ease, transform 0.25s ease;*/
 }
 
 .notice-fade-enter-from,

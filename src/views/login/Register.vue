@@ -3,7 +3,7 @@
     <Card class="register-card">
       <CardHeader class="card-header">
         <CardTitle @click="router.push('/')" class="card-title">
-          ClassCord
+          建立帳號
         </CardTitle>
         <CardDescription class="card-description">
           建立一個新帳號以加入 ClassCord 社群
@@ -422,7 +422,7 @@ const loginWithDiscord = () => {
 }
 
 .card-title {
-  font-size: 30px;
+  font-size: 26px;
   font-weight: 800;
   letter-spacing: 0.05em;
   background: #ffffff;

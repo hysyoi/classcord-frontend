@@ -92,15 +92,15 @@ export const useAppStore = defineStore("app", () => {
 
   const globalNotice = ref({
     isOpen: false,
-    title: '系統流量管制提示',
-    message: '',
-    code: '',
+    title: "系統流量管制提示",
+    message: "",
+    code: "",
   });
 
   function showGlobalNotice(
     message: string,
-    code: string = '',
-    title: string = '系統流量管制提示',
+    code: string = "",
+    title: string = "系統流量管制提示",
   ) {
     globalNotice.value = {
       isOpen: true,
@@ -649,27 +649,34 @@ export const useAppStore = defineStore("app", () => {
 
   // 啟用 AI 助教向量化任務 (限教師 / 助教)
   async function toggleAiAssistant(materialId: string) {
+    const findMaterial = () => {
+      for (const channelId in messages.value) {
+        for (const msg of messages.value[channelId]) {
+          const mat = msg.materials?.find((m) => m.id === materialId);
+          if (mat) return mat;
+        }
+      }
+      return undefined;
+    };
+
+    // 樂觀更新：點擊當下立即鎖定為處理中，避免等待後端回應期間被重複點擊
+    const material = findMaterial();
+    const previousStatus = material?.status;
+    if (material) material.status = "PROCESSING";
+
     try {
       await enableAiAssistant({
         path: { materialId },
+        signal: AbortSignal.timeout(10000),
         throwOnError: true,
       });
-
-      // 即時將本地快取中對應教材的狀態變更為 PROCESSING (處理中) 以改變 UI 按鈕狀態
-      for (const channelId in messages.value) {
-        messages.value[channelId].forEach((msg) => {
-          if (msg.materials) {
-            const mat = msg.materials.find((m) => m.id === materialId);
-            if (mat) {
-              mat.status = "PROCESSING";
-              console.log("已更新本地教材狀態為 PROCESSING:", materialId);
-            }
-          }
-        });
-      }
     } catch (err) {
       console.error(`開啟 AI 助教失敗，教材 ID: ${materialId}`, err);
-      alert("啟用 AI 助教失敗，您可能權限不足。");
+      alert("啟用 AI 助教失敗，您可能權限不足或連線逾時，請再試一次。");
+
+      // 請求失敗或逾時，還原本地狀態讓按鈕恢復可點擊
+      const mat = findMaterial();
+      if (mat) mat.status = previousStatus;
     }
   }
 

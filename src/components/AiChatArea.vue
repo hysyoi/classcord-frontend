@@ -385,12 +385,12 @@
                 <div class="progress-text-info">
                   <span>{{ progressText }}</span>
                   <span v-if="progressStatus === 'RUNNING'"
-                    >⏳ AI 分析教材出題中...</span
+                    >AI 分析教材出題中...</span
                   >
                   <span
                     v-else-if="progressStatus === 'COMPLETED'"
                     class="text-success"
-                    >✓ 題庫生成成功！</span
+                    >題庫生成成功！</span
                   >
                   <span
                     v-else-if="progressStatus === 'FAILED'"
@@ -2880,6 +2880,10 @@ onUnmounted(() => {
 
 .btn-close-limit:active {
   transform: scale(0.98);
+}
+
+.status-badge {
+  color: var(--bg-surface-text-muted);
 }
 
 @keyframes fadeIn {
