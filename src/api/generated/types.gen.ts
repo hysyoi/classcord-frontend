@@ -47,6 +47,7 @@ export type ServerMemberResponse = {
   avatarUrl?: string;
   role?: "TEACHER" | "STUDENT" | "TA";
   joinedAt?: string;
+  online?: boolean;
 };
 
 export type CreateChannelRequest = {

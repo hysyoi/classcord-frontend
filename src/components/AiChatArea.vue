@@ -6,7 +6,11 @@
         <span class="bot-badge"><AiFillIcon /> AI 助教</span>
         <span class="header-divider">/</span>
         <span class="file-name" :title="store.aiMaterial?.originalName">
-          {{ store.aiMaterial?.originalName }}
+          {{
+            store.isLoadingAiMaterial || !store.aiMaterial
+              ? "載入中..."
+              : store.aiMaterial.originalName
+          }}
         </span>
       </div>
       <div class="header-actions">
@@ -40,8 +44,12 @@
             <CreateNewFolderOutlineRoundedIcon/>管理題庫
           </button>
           <!-- 開始測驗按鈕 -->
-          <button class="action-btn quiz-btn" @click="startQuiz">
-            <PaperLineIcon />開始測驗
+          <button
+            class="action-btn quiz-btn"
+            :disabled="isStartingQuiz"
+            @click="startQuiz"
+          >
+            <PaperLineIcon />{{ isStartingQuiz ? "發起測驗中..." : "開始測驗" }}
           </button>
         </template>
 
@@ -61,7 +69,7 @@
       <!-- 主內容區：依據狀態切換對話視窗、測驗中、測驗結果報告 -->
       <div class="main-content-container">
         <!-- 狀態 A: 測驗進行中 -->
-        <div v-if="activeQuiz" class="quiz-container">
+        <div v-if="activeQuiz" key="quiz-active" class="quiz-container">
           <div class="quiz-card">
             <div class="quiz-card-header">
               <span class="quiz-badge"><PaperLineIcon />教材測驗進行中</span>
@@ -143,8 +151,20 @@
           </div>
         </div>
 
+        <!-- 狀態 B0: 測驗報告載入中 -->
+        <div
+          v-else-if="store.isLoadingQuizReport"
+          key="quiz-report-loading"
+          class="quiz-default-container"
+        >
+          <div class="quiz-loading-state">
+            <LoadingFillIcon class="quiz-loading-icon" />
+            <!-- <p>載入中...</p> -->
+          </div>
+        </div>
+
         <!-- 狀態 B: 顯示測驗報告報告 -->
-        <div ref="reportScrollRef" @scroll="handleReportScroll" v-else-if="store.isQuizMode && quizReport" class="report-container">
+        <div ref="reportScrollRef" @scroll="handleReportScroll" v-else-if="store.isQuizMode && quizReport" key="quiz-report" class="report-container">
           <div class="report-card">
             <div class="report-header">
               <div class="score-circle">
@@ -222,7 +242,7 @@
         </div>
 
         <!-- 狀態 D: 預設測驗頁面 (無歷史紀錄且未開始測驗) -->
-        <div v-else-if="store.isQuizMode" class="quiz-default-container">
+        <div v-else-if="store.isQuizMode" key="quiz-default" class="quiz-default-container">
           <div class="quiz-default-card">
             <div class="default-icon"><ReportIcon/></div>
             <h3>尚無測驗紀錄</h3>
@@ -234,7 +254,7 @@
         </div>
 
         <!-- 狀態 E: 題庫管理頁面 (專屬面板) -->
-        <div v-else-if="isManagingPool" class="pool-dashboard-container">
+        <div v-else-if="isManagingPool" key="pool-management" class="pool-dashboard-container">
           <div class="pool-dashboard-grid">
             <!-- 左側題庫清單 (原右側) -->
             <div class="pool-right-panel">
@@ -252,6 +272,7 @@
               </div>
 
               <div v-if="isLoadingQuestionPool" class="loading-questions-tip">
+                <LoadingFillIcon class="quiz-loading-icon" />
                 載入題庫中...
               </div>
               <div v-else-if="questionPool.length === 0" class="empty-pool-tip">
@@ -403,7 +424,7 @@
           </div>
         </div>
 
-        <div v-else class="chat-main-flow">
+        <div v-else key="chat-main" class="chat-main-flow">
           <!-- 訊息對話列表 -->
           <div
             class="message-list"
@@ -411,6 +432,26 @@
             ref="msgListRef"
             @scroll="handleScroll"
           >
+            <!-- 會話訊息載入中的 Skeleton 佔位 -->
+            <template v-if="store.isLoadingAiMessages">
+              <div
+                v-for="row in aiMessageSkeletonRows"
+                :key="`ai-message-skeleton-${row.id}`"
+                class="msg-list msg-row msg-list-skeleton"
+                :class="row.role"
+              >
+                <Skeleton class="msg-avatar-skeleton" />
+                <div class="msg-bubble">
+                  <Skeleton class="msg-avatar-name-skeleton" />
+                  <Skeleton
+                    class="msg-bubble-skeleton"
+                    :style="{ width: row.width, height: row.height }"
+                  />
+                </div>
+              </div>
+            </template>
+
+            <template v-else>
             <!-- 歡迎導引 (無會話訊息時) -->
             <div
               v-if="store.aiMessages.length === 0 && !store.isAiLoading"
@@ -517,6 +558,7 @@
                 </div>
               </div>
             </div>
+            </template>
           </div>
 
           <!-- 底部輸入框 (Gemini 膠囊式設計) -->
@@ -525,15 +567,25 @@
             <div class="pill-input-wrapper">
               <textarea
                 v-model="inputText"
-                :placeholder="store.isAiLoading ? 'AI 正在思考中...' : '向 AI 助教發送提問... (按 Enter 送出，Shift+Enter 換行)'"
+                :placeholder="
+                  store.isLoadingAiMessages
+                    ? '載入中...'
+                    : store.isAiLoading
+                      ? 'AI 正在思考中...'
+                      : '向 AI 助教發送提問... (按 Enter 送出，Shift+Enter 換行)'
+                "
                 rows="1"
                 @keydown="handleKeyDown"
                 ref="textareaRef"
-                :disabled="store.isAiLoading"
+                :disabled="store.isAiLoading || store.isLoadingAiMessages"
               ></textarea>
               <button
                 class="send-btn"
-                :disabled="!inputText.trim() || store.isAiLoading"
+                :disabled="
+                  !inputText.trim() ||
+                  store.isAiLoading ||
+                  store.isLoadingAiMessages
+                "
                 @click="handleSend"
                 title="發送訊息"
               >
@@ -598,6 +650,8 @@
 <script setup lang="ts">
 import { ref, watch, nextTick, onMounted, computed, onUnmounted } from "vue";
 import { useAppStore } from "../store/useAppStore";
+import { Skeleton } from "@/components/ui/skeleton";
+import { afterSkeletonDelay } from "@/lib/debug";
 import MemberList from "./MemberList.vue";
 import { marked } from "marked";
 import Prism from "prismjs";
@@ -614,6 +668,7 @@ import "prismjs/components/prism-json";
 import "prismjs/components/prism-yaml";
 import "prismjs/components/prism-markdown";
 import AiFillIcon from "~icons/mingcute/ai-fill";
+import LoadingFillIcon from "~icons/mingcute/loading-fill";
 import PaperLineIcon from "~icons/mingcute/paper-line";
 import DoorIcon from "~icons/akar-icons/door";
 import SendRoundedIcon from "~icons/material-symbols/send-rounded";
@@ -627,6 +682,12 @@ import WaterFilledIcon from '~icons/line-md/water-filled';
 import Avatar from "vue-boring-avatars";
 
 const store = useAppStore();
+
+// AI 對話訊息載入中的 Skeleton 佔位形狀：模擬使用者/AI 交錯對話，寬度不一避免呆板
+const aiMessageSkeletonRows = [
+  { id: 1, role: "user", width: "260px", height: "50px" },
+  { id: 2, role: "assistant", width: "430px", height: "100px" },
+];
 
 const formatDetailedTimestamp = (isoString: string): string => {
   if (!isoString) return "剛剛";
@@ -664,6 +725,7 @@ const textareaRef = ref<HTMLTextAreaElement | null>(null);
 const currentQuestionIndex = ref(0);
 const quizAnswers = ref<Record<string, string[]>>({});
 const isSubmittingQuiz = ref(false);
+const isStartingQuiz = ref(false);
 
 const activeQuiz = computed({
   get: () => store.activeQuiz,
@@ -729,7 +791,8 @@ const prevQuestion = () => {
 
 // 開始測驗
 const startQuiz = async () => {
-  if (!store.aiMaterial) return;
+  if (!store.aiMaterial || isStartingQuiz.value) return;
+  isStartingQuiz.value = true;
   try {
     const quiz = await store.createMaterialQuiz(store.aiMaterial.id);
     activeQuiz.value = quiz;
@@ -743,6 +806,8 @@ const startQuiz = async () => {
       err.response?.data?.message ||
         "發起測驗失敗！教材題庫可能不足 10 題，請聯絡老師或助教產生題庫。",
     );
+  } finally {
+    isStartingQuiz.value = false;
   }
 };
 
@@ -846,7 +911,9 @@ const refreshQuestionPool = async () => {
   } catch (err) {
     console.error(err);
   } finally {
-    isLoadingQuestionPool.value = false;
+    afterSkeletonDelay(() => {
+      isLoadingQuestionPool.value = false;
+    });
   }
 };
 
@@ -858,6 +925,18 @@ const deleteQuestion = async (qId: string) => {
   } catch (err) {
     alert("刪除題目失敗，請稍後再試。");
   }
+};
+
+// 進行中出題任務的 jobId 持久化 (localStorage，依 materialId 分開存)，
+// 讓重新整理頁面後也能重新接回同一條 SSE 恢復進度，而不是讓使用者以為任務消失、誤觸發重複出題。
+const activeJobStorageKey = (materialId: string) => `activeQuizGenJob:${materialId}`;
+
+const saveActiveJobId = (materialId: string, jobId: string) => {
+  localStorage.setItem(activeJobStorageKey(materialId), jobId);
+};
+
+const clearActiveJobId = (materialId: string) => {
+  localStorage.removeItem(activeJobStorageKey(materialId));
 };
 
 // AI 開始出題 (SSE Progress)
@@ -876,12 +955,27 @@ const startGeneratingQuestions = async () => {
       genDifficulty.value,
     );
     if (res && res.jobId) {
+      saveActiveJobId(store.aiMaterial.id, res.jobId);
       subscribeProgress(res.jobId);
     }
   } catch (err: any) {
     isGeneratingQuestions.value = false;
     alert(err.response?.data?.message || "發起 AI 出題任務失敗！");
   }
+};
+
+// 重新整理頁面 / 重新進入該教材時，若有尚未完成的出題任務，重新接回同一條 SSE 恢復進度
+const restoreActiveGenerationJob = () => {
+  if (!store.aiMaterial || isGeneratingQuestions.value) return;
+  const jobId = localStorage.getItem(activeJobStorageKey(store.aiMaterial.id));
+  if (!jobId) return;
+
+  isGeneratingQuestions.value = true;
+  progressStatus.value = "PENDING";
+  progressPercent.value = 5;
+  progressText.value = "重新連線任務進度...";
+  progressError.value = "";
+  subscribeProgress(jobId);
 };
 
 const subscribeProgress = (jobId: string) => {
@@ -910,6 +1004,7 @@ const subscribeProgress = (jobId: string) => {
         progressPercent.value = 100;
         progressText.value = "出題成功！共新增 " + genCount.value + " 道考題！";
         closeProgressEs();
+        if (store.aiMaterial) clearActiveJobId(store.aiMaterial.id);
         setTimeout(() => {
           isGeneratingQuestions.value = false;
           refreshQuestionPool();
@@ -919,6 +1014,7 @@ const subscribeProgress = (jobId: string) => {
         progressText.value = "出題任務失敗";
         progressError.value = data.errorMessage || "未知錯誤";
         closeProgressEs();
+        if (store.aiMaterial) clearActiveJobId(store.aiMaterial.id);
       }
     } catch (e) {
       console.error("解析進度資料出錯:", e);
@@ -999,6 +1095,16 @@ watch(inputText, () => {
   adjustHeight();
 });
 
+// 切換 AI 會話時清空未送出的草稿並重設輸入框高度，
+// 避免舊會話裡打到一半的多行草稿殘留的高度被帶進新會話（畫面會變成異常高的空膠囊）。
+watch(
+  () => store.activeAiSessionId,
+  () => {
+    inputText.value = "";
+    adjustHeight();
+  },
+);
+
 const scrollToBottom = () => {
   nextTick(() => {
     if (msgListRef.value) {
@@ -1007,50 +1113,76 @@ const scrollToBottom = () => {
   });
 };
 
-const lastRestoredSessionId = ref<string | null>(null);
+// 記錄「正在等待哪個會話的訊息載入完成後要還原捲軸位置」。
+// 舊寫法用 lastRestoredSessionId 記錄「這個會話曾經還原過」，但只要重新切回一個「曾經」造訪過的
+// 會話，這個旗標就已經是該會話的 ID 了，會被誤判成「同一會話收到新訊息」而完全跳過還原，
+// 卡在瀏覽器預設的 0。改成跟一般頻道訊息一樣，每次切換都明確標記，不依賴「有沒有還原過」。
+const pendingScrollRestoreSessionId = ref<string | null>(null);
 
-// 監聽會話切換與訊息長度改變，精準控制滾動條記憶還原與新訊息自動探底
+const restoreScrollForSession = (sessionId: string) => {
+  nextTick(() => {
+    if (!msgListRef.value) return;
+    if (pendingScrollRestoreSessionId.value !== sessionId) return;
+    if (store.activeAiSessionId !== sessionId || store.isLoadingAiMessages) return;
+
+    pendingScrollRestoreSessionId.value = null;
+    Prism.highlightAllUnder(msgListRef.value);
+    const savedPos = store.aiSessionScrollPositions[sessionId];
+    if (savedPos !== undefined) {
+      msgListRef.value.scrollTop = savedPos;
+    } else {
+      msgListRef.value.scrollTop = msgListRef.value.scrollHeight;
+    }
+  });
+};
+
+// 1. 偵測到會話切換：只負責標記「等這個會話的訊息載入完成後要還原捲軸」
 watch(
-  () => store.aiMessages,
-  (newMsgs) => {
+  () => store.activeAiSessionId,
+  (newSessionId, oldSessionId) => {
     isScrolling.value = false;
     if (scrollTimeout) {
       clearTimeout(scrollTimeout);
       scrollTimeout = null;
     }
+    if (!newSessionId || newSessionId === oldSessionId) return;
 
-    const sessionId = store.activeAiSessionId;
-    if (!sessionId) return;
+    pendingScrollRestoreSessionId.value = newSessionId;
+    if (!store.isLoadingAiMessages) {
+      restoreScrollForSession(newSessionId);
+    }
+  },
+);
 
+// 2. 偵測到訊息真正載入完成 (isLoadingAiMessages: true -> false)：還原捲軸唯一保證安全的時機點
+watch(
+  () => store.isLoadingAiMessages,
+  (isLoading, wasLoading) => {
+    if (wasLoading && !isLoading && store.activeAiSessionId) {
+      restoreScrollForSession(store.activeAiSessionId);
+    }
+  },
+);
+
+// 3. 同一會話訊息內容變化 (新訊息發送/接收、語法高亮)：
+//    只有當使用者本來就位於底部附近時才自動滾動至最底，避免打斷使用者的歷史閱讀
+watch(
+  () => store.aiMessages,
+  () => {
     nextTick(() => {
-      if (msgListRef.value) {
-        Prism.highlightAllUnder(msgListRef.value);
-      }
-      if (msgListRef.value) {
-        if (lastRestoredSessionId.value !== sessionId) {
-          // 只在訊息完全載入並渲染完畢時（長度大於 0）才還原高度，解決非同步空列表測量高度不準的 Bug
-          if (newMsgs && newMsgs.length > 0) {
-            lastRestoredSessionId.value = sessionId;
-            const savedPos = store.aiSessionScrollPositions[sessionId];
-            if (savedPos !== undefined) {
-              msgListRef.value.scrollTop = savedPos;
-            } else {
-              msgListRef.value.scrollTop = msgListRef.value.scrollHeight;
-            }
-          }
-        } else {
-          // 同一會話訊息增加 (新訊息發送/接收)：
-          // 只有當使用者本來就位於底部附近時才自動滾動至最底，避免打斷使用者的歷史閱讀
-          const threshold = 150;
-          const isNearBottom =
-            msgListRef.value.scrollHeight -
-              msgListRef.value.scrollTop -
-              msgListRef.value.clientHeight <
-            threshold;
-          if (isNearBottom) {
-            msgListRef.value.scrollTop = msgListRef.value.scrollHeight;
-          }
-        }
+      if (!msgListRef.value) return;
+      Prism.highlightAllUnder(msgListRef.value);
+
+      if (store.isLoadingAiMessages || pendingScrollRestoreSessionId.value) return;
+
+      const threshold = 150;
+      const isNearBottom =
+        msgListRef.value.scrollHeight -
+          msgListRef.value.scrollTop -
+          msgListRef.value.clientHeight <
+        threshold;
+      if (isNearBottom) {
+        msgListRef.value.scrollTop = msgListRef.value.scrollHeight;
       }
     });
   },
@@ -1085,14 +1217,20 @@ watch(
 watch(
   msgListRef,
   (newEl) => {
-    if (newEl && !store.isQuizMode && store.activeAiSessionId) {
-      Prism.highlightAllUnder(newEl);
-      const savedPos = store.aiSessionScrollPositions[store.activeAiSessionId];
-      if (savedPos !== undefined) {
-        newEl.scrollTop = savedPos;
-      } else {
-        newEl.scrollTop = newEl.scrollHeight;
-      }
+    if (!newEl || store.isQuizMode || !store.activeAiSessionId) return;
+    Prism.highlightAllUnder(newEl);
+
+    if (store.isLoadingAiMessages) {
+      // 掛載當下訊息還在載入中：交給上面的 isLoadingAiMessages watcher 在載入完成後處理
+      pendingScrollRestoreSessionId.value = store.activeAiSessionId;
+      return;
+    }
+
+    const savedPos = store.aiSessionScrollPositions[store.activeAiSessionId];
+    if (savedPos !== undefined) {
+      newEl.scrollTop = savedPos;
+    } else {
+      newEl.scrollTop = newEl.scrollHeight;
     }
   },
   { immediate: true }
@@ -1159,6 +1297,11 @@ watch(
 );
 
 const handleScroll = () => {
+  // 訊息載入中 (Skeleton 顯示中) 時，內容比真實歷史訊息矮很多，瀏覽器偵測到可捲動範圍變小
+  // 會自動把 scrollTop 夾到接近 0，這個「自動夾擠」動作本身也會觸發 scroll 事件。
+  // 這裡直接跳過，避免把這個被夾出來的錯誤值誤存成該會話的捲軸記憶，覆蓋掉真正的使用者位置。
+  if (store.isLoadingAiMessages) return;
+
   isScrolling.value = true;
   if (scrollTimeout) {
     clearTimeout(scrollTimeout);
@@ -1173,10 +1316,20 @@ const handleScroll = () => {
   }
 };
 
+// aiMaterial 掛載當下可能還沒就緒 (從網址直連 / 重新整理時是非同步抓的)，
+// 所以掛載時查一次，並用 watch 補一次 aiMaterial 到位後的檢查，確保不會漏掉重新接回進度的時機。
 onMounted(() => {
   scrollToBottom();
   adjustHeight();
+  restoreActiveGenerationJob();
 });
+
+watch(
+  () => store.aiMaterial?.id,
+  () => {
+    restoreActiveGenerationJob();
+  },
+);
 
 onUnmounted(() => {
   if (scrollTimeout) {
@@ -1545,6 +1698,29 @@ onUnmounted(() => {
   padding: 32px;
 }
 
+.quiz-loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  color: var(--bg-main-text-muted);
+  font-size: 16px;
+}
+
+.quiz-loading-icon {
+  font-size: 24px;
+  animation: quiz-loading-spin 1s linear infinite;
+}
+
+@keyframes quiz-loading-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .quiz-default-card {
   text-align: center;
   align-items: center;
@@ -1904,6 +2080,39 @@ onUnmounted(() => {
 .msg-row.model .msg-text,
 .msg-row.assistant .msg-text {
   /*border-top-left-radius: 0;*/
+}
+
+/* AI 對話訊息載入中的 Skeleton 佔位 */
+
+.msg-list-skeleton {
+  margin-right: 16px;
+}
+
+.msg-avatar-name-skeleton {
+  width: 45px;
+  height: 11px;
+  background-color: rgba(255, 255, 255, 0.06);
+}
+
+/* user 訊息的 msg-bubble 因為整行 row-reverse，這裡要手動右對齊才會跟真實的
+   .msg-row.user .msg-meta { text-align: right; } 視覺上一致 */
+.msg-row.user .msg-avatar-name-skeleton {
+  align-self: flex-end;
+}
+
+.msg-avatar-skeleton {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background-color: rgba(255, 255, 255, 0.06);
+}
+
+.msg-bubble-skeleton {
+  margin-top: 3px;
+  height: 50px;
+  border-radius: 16px;
+  background-color: rgba(255, 255, 255, 0.06);
 }
 
 /* Markdown 排版樣式微調 */
@@ -2559,6 +2768,13 @@ onUnmounted(() => {
   font-size: 14px;
   text-align: center;
   padding: 60px 0;
+}
+
+.loading-questions-tip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
 }
 
 .pool-questions-list {

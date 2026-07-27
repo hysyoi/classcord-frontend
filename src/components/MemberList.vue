@@ -1,43 +1,77 @@
 <template>
   <div class="member-list">
-    <div v-for="group in groups" :key="group.role" class="group-section">
-      <div class="group-name">
-        {{ group.role }} <span class="line">—</span> {{ group.members.length }}
-      </div>
+    <!-- 成員列表載入中的 Skeleton 佔位 -->
+    <template v-if="store.isLoadingMembers">
+      <div
+        v-for="group in memberSkeletonGroups"
+        :key="`member-skeleton-group-${group}`"
+        class="group-section"
+      >
+        <Skeleton class="group-name-skeleton" />
 
-      <div v-for="member in group.members" :key="member.id" class="member-item">
-        <div class="avatar-wrapper">
-          <div class="avatar">
-            <img
-              v-if="member.avatarUrl"
-              :src="member.avatarUrl"
-              class="avatar-img"
-            />
-            <Avatar
-              v-else
-              :name="member.name"
-              variant="beam"
-              :size="34"
-              :colors="store.avatarColors"
-            />
-          </div>
-          <div
-            class="status-dot"
-            :class="member.online ? 'online' : 'offline'"
-          ></div>
+        <div
+          v-for="item in memberSkeletonPerGroup"
+          :key="`member-skeleton-${group}-${item}`"
+          class="member-item member-item-skeleton"
+        >
+          <Skeleton class="avatar-skeleton" />
+          <Skeleton class="member-name-skeleton" />
         </div>
-        <span class="member-name" :title="member.name">{{ member.name }}</span>
       </div>
-    </div>
+    </template>
+
+    <template v-else>
+      <div v-for="group in groups" :key="group.role" class="group-section">
+        <div class="group-name">
+          {{ group.role }} <span class="line">—</span>
+          {{ group.members.length }}
+        </div>
+
+        <div
+          v-for="member in group.members"
+          :key="member.id"
+          class="member-item"
+        >
+          <div class="avatar-wrapper">
+            <div class="avatar">
+              <img
+                v-if="member.avatarUrl"
+                :src="member.avatarUrl"
+                class="avatar-img"
+              />
+              <Avatar
+                v-else
+                :name="member.name"
+                variant="beam"
+                :size="34"
+                :colors="store.avatarColors"
+              />
+            </div>
+            <div
+              class="status-dot"
+              :class="member.online ? 'online' : 'offline'"
+            ></div>
+          </div>
+          <span class="member-name" :title="member.name">{{
+            member.name
+          }}</span>
+        </div>
+      </div>
+    </template>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed } from "vue";
 import { useAppStore } from "@/store/useAppStore";
+import { Skeleton } from "@/components/ui/skeleton";
 import Avatar from "vue-boring-avatars";
 
 const store = useAppStore();
+
+// 成員列表載入中的 Skeleton 佔位形狀：模擬 2 組角色分類、每組 4 位成員
+const memberSkeletonGroups = [1, 2];
+const memberSkeletonPerGroup = [1, 2, 3, 4];
 
 // 將成員依照角色分組，排序為：老師 (TEACHER) -> 助教 (TA) -> 學生 (STUDENT)
 const groups = computed(() => {
@@ -83,7 +117,7 @@ function mapMember(m: any, defaultColor: string) {
     name,
     initial,
     color,
-    online: true, // 預設全部顯示為在線狀態
+    online: !!m.userId && store.onlineUserIds.has(m.userId),
     avatarUrl: m.avatarUrl || null,
   };
 }
@@ -164,6 +198,7 @@ function mapMember(m: any, defaultColor: string) {
 
 .offline {
   background: #80848e;
+  /*background: var(--bg-main-light);*/
 }
 
 .member-name {
@@ -184,5 +219,39 @@ function mapMember(m: any, defaultColor: string) {
   height: 100%;
   border-radius: 50%;
   object-fit: cover;
+}
+
+/* 成員列表載入中的 Skeleton 佔位 */
+.group-name-skeleton {
+  height: 14px;
+  width: 60px;
+  margin: 12px 8px 10px;
+  background-color: rgba(255, 255, 255, 0.06);
+}
+
+.member-item-skeleton {
+  cursor: default;
+}
+
+.avatar-skeleton {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background-color: rgba(255, 255, 255, 0.06);
+}
+
+.member-name-skeleton {
+  height: 16px;
+  width: 100px;
+  background-color: rgba(255, 255, 255, 0.06);
+}
+
+.member-item-skeleton:nth-child(4n + 3) .member-name-skeleton {
+  width: 70px;
+}
+
+.member-item-skeleton:nth-child(4n) .member-name-skeleton {
+  width: 130px;
 }
 </style>

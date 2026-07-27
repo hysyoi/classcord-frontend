@@ -41,23 +41,37 @@
 
         <!-- 會話清單 -->
         <div class="session-items-container">
-          <div v-if="store.aiSessions.length === 0" class="no-session-tip">
-            尚未建立對話會話
-          </div>
-          <div
-            v-for="(session, index) in store.aiSessions"
-            :key="session.id"
-            class="session-item"
-            :class="{ active: session.id === store.activeAiSessionId }"
-            @click="store.selectAiSession(session.id)"
-          >
-            <span class="session-icon"></span>
-            <span class="session-text">
-              會話 {{ store.aiSessions.length - index }} ({{
-                formatDate(session.createdAt)
-              }})
-            </span>
-          </div>
+          <!-- 會話清單載入中的 Skeleton 佔位 -->
+          <template v-if="store.isLoadingAiSessions">
+            <div
+              v-for="n in sessionSkeletonRows"
+              :key="`session-skeleton-${n}`"
+              class="session-item session-item-skeleton"
+            >
+              <!-- <Skeleton class="session-icon-skeleton" /> -->
+              <Skeleton class="session-text-skeleton" />
+            </div>
+          </template>
+
+          <template v-else>
+            <div v-if="store.aiSessions.length === 0" class="no-session-tip">
+              尚未建立對話會話
+            </div>
+            <div
+              v-for="(session, index) in store.aiSessions"
+              :key="session.id"
+              class="session-item"
+              :class="{ active: session.id === store.activeAiSessionId }"
+              @click="store.selectAiSession(session.id)"
+            >
+              <span class="session-icon"></span>
+              <span class="session-text">
+                會話 {{ store.aiSessions.length - index }} ({{
+                  formatDate(session.createdAt)
+                }})
+              </span>
+            </div>
+          </template>
         </div>
       </div>
 
@@ -68,9 +82,20 @@
           @scroll="handleQuizHistoryScroll"
           class="session-items-container quiz-history-container"
         >
-          <div v-if="isLoadingHistory" class="loading-history-tip">
-            載入歷史紀錄中...
-          </div>
+          <!-- 測驗紀錄載入中的 Skeleton 佔位 -->
+          <template v-if="isLoadingHistory">
+            <div
+              v-for="n in quizHistorySkeletonRows"
+              :key="`quiz-history-skeleton-${n}`"
+              class="session-item quiz-history-item quiz-history-item-skeleton"
+            >
+              <!-- <Skeleton class="session-icon-skeleton" /> -->
+              <div class="quiz-history-info">
+                <Skeleton class="quiz-score-skeleton" />
+                <Skeleton class="quiz-time-skeleton" />
+              </div>
+            </div>
+          </template>
           <div v-else-if="quizHistory.length === 0" class="no-session-tip">
             尚無任何測驗紀錄
           </div>
@@ -100,11 +125,17 @@
 <script setup lang="ts">
 import { ref, watch, nextTick, onMounted } from "vue";
 import { useAppStore } from "../store/useAppStore";
+import { Skeleton } from "@/components/ui/skeleton";
+import { afterSkeletonDelay } from "@/lib/debug";
 import ArrowLeftBoldIcon from "~icons/ep/arrow-left-bold";
 import AiFillIcon from "~icons/mingcute/ai-fill";
 import PaperLineIcon from "~icons/mingcute/paper-line";
 import PlusIcon from "~icons/typcn/plus";
 const store = useAppStore();
+
+// 會話清單／測驗紀錄載入中的 Skeleton 佔位列數
+const sessionSkeletonRows = 5;
+const quizHistorySkeletonRows = 5;
 
 const activeTab = ref<"chat" | "quiz">(store.isQuizMode ? "quiz" : "chat");
 const quizHistory = ref<any[]>([]);
@@ -129,11 +160,16 @@ const loadQuizHistory = async () => {
   } catch (err) {
     console.error(err);
   } finally {
-    isLoadingHistory.value = false;
+    afterSkeletonDelay(() => {
+      isLoadingHistory.value = false;
+    });
   }
 };
 
 const handleQuizHistoryScroll = () => {
+  // 載入中 (Skeleton 顯示中) 時內容變矮，瀏覽器自動夾擠 scrollTop 也會觸發 scroll 事件，
+  // 這裡跳過避免把夾出來的錯誤值存成捲軸記憶，蓋掉真正的使用者位置。
+  if (isLoadingHistory.value) return;
   if (quizHistoryScrollRef.value && store.aiMaterial) {
     store.quizHistoryScrollPositions[store.aiMaterial.id] =
       quizHistoryScrollRef.value.scrollTop;
@@ -228,6 +264,43 @@ watch(activeTab, async (newTab) => {
   }
 });
 
+// 載入測驗紀錄清單，並自動選取「目前報告對應的那筆」或「最新一筆」重新抓取報告內容
+// (onMounted 與下方 aiMaterial watcher 共用，避免兩處各寫一份邏輯卻不同步)
+const loadQuizHistoryAndSelectReport = async () => {
+  await loadQuizHistory();
+  // 只有在當前沒有進行中測驗時，才載入歷史紀錄報告
+  if (!store.activeQuiz) {
+    const currentReportId = store.quizReport?.id;
+    const hasCurrentReport =
+      currentReportId &&
+      quizHistory.value.some((q) => q.id === currentReportId);
+    if (hasCurrentReport) {
+      selectPastQuiz(currentReportId);
+    } else if (quizHistory.value.length > 0) {
+      selectPastQuiz(quizHistory.value[0].id);
+    }
+  }
+};
+
+// loadQuizHistory 需要 store.aiMaterial 才能執行，但重新整理頁面直接進入測驗紀錄分頁時，
+// 這個元件 mounted 當下 aiMaterial 常常還沒被 enterAiModeFromUrl() 抓回來 (非同步競態)，
+// 導致 loadQuizHistory 直接被擋掉、清單 Skeleton 跟報告都沒機會重新載入。
+// 這裡等 aiMaterial 真的到位後，補跑一次完整的「清單 + 自動選取報告」邏輯，
+// 而不是只補清單 (不然畫面會卡在 localStorage 快取的舊報告，永遠不會重新抓)。
+watch(
+  () => store.aiMaterial?.id,
+  (id) => {
+    if (
+      id &&
+      activeTab.value === "quiz" &&
+      quizHistory.value.length === 0 &&
+      !isLoadingHistory.value
+    ) {
+      loadQuizHistoryAndSelectReport();
+    }
+  },
+);
+
 // 當進行中測驗狀態改變時（例如退出或提交測驗），若在測驗頁籤下，自動載入並選取最新的一筆歷史紀錄
 watch(
   () => store.activeQuiz,
@@ -257,19 +330,7 @@ watch(
 
 onMounted(async () => {
   if (activeTab.value === "quiz") {
-    await loadQuizHistory();
-    // 只有在當前沒有進行中測驗時，才載入歷史紀錄報告
-    if (!store.activeQuiz) {
-      const currentReportId = store.quizReport?.id;
-      const hasCurrentReport =
-        currentReportId &&
-        quizHistory.value.some((q) => q.id === currentReportId);
-      if (hasCurrentReport) {
-        selectPastQuiz(currentReportId);
-      } else if (quizHistory.value.length > 0) {
-        selectPastQuiz(quizHistory.value[0].id);
-      }
-    }
+    await loadQuizHistoryAndSelectReport();
   }
 });
 
@@ -506,5 +567,48 @@ const formatDate = (dateStr?: string) => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* 會話清單／測驗紀錄載入中的 Skeleton 佔位 */
+.session-item-skeleton,
+.quiz-history-item-skeleton {
+  cursor: default;
+}
+
+.session-icon-skeleton {
+  width: 15px;
+  height: 15px;
+  border-radius: 4px;
+  flex-shrink: 0;
+  background-color: rgba(255, 255, 255, 0.06);
+}
+
+.session-text-skeleton {
+  margin-left: 8px;
+  height: 16px;
+  width: 130px;
+  background-color: rgba(255, 255, 255, 0.06);
+}
+
+.session-item-skeleton:nth-child(3n + 2) .session-text-skeleton {
+  width: 90px;
+}
+
+.session-item-skeleton:nth-child(3n + 3) .session-text-skeleton {
+  width: 160px;
+}
+
+.quiz-score-skeleton {
+  height: 16px;
+  width: 70px;
+  margin-left: 10px;
+  background-color: rgba(255, 255, 255, 0.06);
+}
+
+.quiz-time-skeleton {
+  height: 10px;
+  width: 55px;
+  margin-top: 2px;
+  background-color: rgba(255, 255, 255, 0.06);
 }
 </style>

@@ -25,6 +25,7 @@ import type { ServerMemberResponse } from "@/api/generated";
 import { Client } from "@stomp/stompjs";
 import { router } from "@/router";
 import { client } from "@/api/generated/client.gen";
+import { afterSkeletonDelay } from "@/lib/debug";
 
 interface Material {
   id: string;
@@ -71,6 +72,9 @@ export const useAppStore = defineStore("app", () => {
   // 當前班級成員列表
   const serverMembers = ref<ServerMemberResponse[]>([]);
 
+  // 全域在線使用者 ID 集合（跨伺服器共用，由 /topic/presence 即時更新）
+  const onlineUserIds = ref<Set<string>>(new Set());
+
   // 教材臨時下載 URL 的前端快取，避免重複點擊浪費頻寬/DB資源
   const materialUrlCache = ref<
     Record<string, { url: string; expiresAt: number }>
@@ -86,6 +90,14 @@ export const useAppStore = defineStore("app", () => {
   const activeAiSessionId = ref<string | null>(null);
   const aiMessages = ref<any[]>([]);
   const isAiLoading = ref(false);
+  // 進入 AI 模式、抓取對話會話清單期間的載入狀態，供會話列表顯示 Skeleton 佔位用
+  const isLoadingAiSessions = ref(false);
+  // 直接用網址 / 重新整理進入 AI 模式時，抓取教材詳情期間的載入狀態，供標頭檔名顯示「載入中...」用
+  const isLoadingAiMaterial = ref(false);
+  // 切換 AI 會話、抓取歷史訊息期間的載入狀態，供 AI 對話區顯示 Skeleton 佔位用
+  const isLoadingAiMessages = ref(false);
+  // 點擊歷史測驗紀錄、抓取測驗報告期間的載入狀態，供主內容區顯示置中「載入中...」用
+  const isLoadingQuizReport = ref(false);
   const showMemberList = ref(true);
   const isManagingPool = ref(false);
   const isAiLimitDialogOpen = ref(false);
@@ -133,6 +145,10 @@ export const useAppStore = defineStore("app", () => {
   const channelPages = ref<Record<string, number>>({});
   const channelHasMore = ref<Record<string, boolean>>({});
   const isFetchingMore = ref(false);
+  // 切換頻道、抓取歷史訊息期間的載入狀態，供訊息區顯示 Skeleton 佔位用
+  const isLoadingMessages = ref(false);
+  // 切換班級、抓取成員列表期間的載入狀態，供成員列表顯示 Skeleton 佔位用
+  const isLoadingMembers = ref(false);
 
   const lastActiveChannelPerServer = ref<Record<string, string>>({});
   const channelScrollPositions = ref<Record<string, number>>({});
@@ -216,6 +232,7 @@ export const useAppStore = defineStore("app", () => {
   // WebSocket Client (使用普通變數以避免 Vue Proxy 包裝開銷)
   let stompClient: Client | null = null;
   let currentSubscription: any = null;
+  let presenceSubscription: any = null;
 
   const isTeacherOrTA = computed(
     () => currentRole.value === "TEACHER" || currentRole.value === "TA",
@@ -317,17 +334,25 @@ export const useAppStore = defineStore("app", () => {
       currentSubscription.unsubscribe();
       currentSubscription = null;
     }
+    if (presenceSubscription) {
+      presenceSubscription.unsubscribe();
+      presenceSubscription = null;
+    }
     if (stompClient) {
       stompClient.deactivate();
       stompClient = null;
     }
   }
 
-  // 訂閱當前選取的班級（伺服器）廣播頻道
+  // 訂閱當前選取的班級（伺服器）廣播頻道：聊天訊息 + 在線狀態，切換伺服器時會重新訂閱
   function subscribeToActiveServer() {
     if (currentSubscription) {
       currentSubscription.unsubscribe();
       currentSubscription = null;
+    }
+    if (presenceSubscription) {
+      presenceSubscription.unsubscribe();
+      presenceSubscription = null;
     }
 
     if (!stompClient || !stompClient.connected || !activeServerId.value) {
@@ -336,6 +361,23 @@ export const useAppStore = defineStore("app", () => {
 
     const serverId = activeServerId.value;
     console.log(`訂閱伺服器級廣播：/topic/servers/${serverId}/messages`);
+
+    presenceSubscription = stompClient.subscribe(
+      `/topic/servers/${serverId}/presence`,
+      (frame) => {
+        try {
+          const payload = JSON.parse(frame.body);
+          if (!payload.userId) return;
+          if (payload.online) {
+            onlineUserIds.value.add(payload.userId);
+          } else {
+            onlineUserIds.value.delete(payload.userId);
+          }
+        } catch (e) {
+          console.error("解析在線狀態廣播失敗:", e);
+        }
+      },
+    );
 
     currentSubscription = stompClient.subscribe(
       `/topic/servers/${serverId}/messages`,
@@ -414,7 +456,9 @@ export const useAppStore = defineStore("app", () => {
     } catch (err) {
       console.error("取得伺服器列表失敗:", err);
     } finally {
-      isLoading.value = false;
+      afterSkeletonDelay(() => {
+        isLoading.value = false;
+      });
     }
   }
 
@@ -436,6 +480,8 @@ export const useAppStore = defineStore("app", () => {
     channels.value = [];
     activeChannelId.value = null;
     currentRole.value = null;
+    serverMembers.value = [];
+    isLoadingMembers.value = true;
 
     // 重新訂閱當前班級的訊息廣播
     subscribeToActiveServer();
@@ -458,6 +504,18 @@ export const useAppStore = defineStore("app", () => {
         throwOnError: true,
       });
       serverMembers.value = membersRes.data || [];
+      // 用剛取得的成員列表快照校正在線名單，之後再交由 /topic/presence 即時更新
+      for (const m of serverMembers.value) {
+        if (!m.userId) continue;
+        if (m.online) {
+          onlineUserIds.value.add(m.userId);
+        } else {
+          onlineUserIds.value.delete(m.userId);
+        }
+      }
+      afterSkeletonDelay(() => {
+        isLoadingMembers.value = false;
+      });
       const token = localStorage.getItem("token");
       if (token) {
         try {
@@ -488,6 +546,7 @@ export const useAppStore = defineStore("app", () => {
       }
     } catch (err) {
       console.error(`取得伺服器 ${id} 的頻道與角色列表失敗:`, err);
+      isLoadingMembers.value = false;
     }
   }
 
@@ -517,6 +576,7 @@ export const useAppStore = defineStore("app", () => {
     }
 
     // 使用 REST API 拉取該頻道的歷史訊息
+    isLoadingMessages.value = true;
     try {
       const res = await getMessages({
         path: { channelId: id },
@@ -556,6 +616,10 @@ export const useAppStore = defineStore("app", () => {
         console.warn(`無權存取頻道 ${id}，重新導向至 /channels/@me`);
         router.push("/channels/@me");
       }
+    } finally {
+      afterSkeletonDelay(() => {
+        isLoadingMessages.value = false;
+      });
     }
   }
 
@@ -689,6 +753,7 @@ export const useAppStore = defineStore("app", () => {
     activeAiSessionId.value = null;
     aiMessages.value = [];
     isAiLoading.value = false;
+    isLoadingAiSessions.value = true;
 
     // 還原此教材的 Quiz 相關狀態
     activeQuiz.value = null; // 測驗進度退出即重來
@@ -733,6 +798,10 @@ export const useAppStore = defineStore("app", () => {
       }
     } catch (err) {
       console.error("進入 AI 模式失敗:", err);
+    } finally {
+      afterSkeletonDelay(() => {
+        isLoadingAiSessions.value = false;
+      });
     }
   }
 
@@ -749,15 +818,27 @@ export const useAppStore = defineStore("app", () => {
     activeQuiz.value = null; // 測驗進度退出即重來
     quizReport.value = materialQuizReports.value[materialId] || null;
     isQuizMode.value = materialQuizModes.value[materialId] || false;
+    // 這裡要跟下面真正抓訊息前一樣同步標記為載入中，
+    // 否則 MessageArea/AiChatArea 監聽 activeAiSessionId 變化的 watcher 會誤判成
+    // 「訊息已經就緒」而提早（在 aiMessages 還是空的情況下）嘗試還原捲軸位置，
+    // 把「等待還原」的旗標提前消耗掉，導致訊息真正載入完成後反而不會再還原了。
+    isLoadingAiMessages.value = true;
     activeAiSessionId.value = sessionId;
     lastActiveSessionPerMaterial.value[materialId] = sessionId;
 
     // 載入伺服器頻道與角色 (若未載入)
     if (channels.value.length === 0) {
       await selectServer(serverId);
+      // selectServer 內部會自動 selectChannel 並把網址導向一般頻道頁面，
+      // 這裡要導回正確的 AI 對話網址，避免直接用網址進入時被誤判成離開 AI 模式
+      const aiChatPath = `/channels/${serverId}/ai/${materialId}/${sessionId}`;
+      if (router.currentRoute.value.path !== aiChatPath) {
+        router.push(aiChatPath);
+      }
     }
 
     // 取得教材詳細資料
+    isLoadingAiMaterial.value = true;
     try {
       const matRes = await getMaterial({
         path: { materialId },
@@ -774,9 +855,14 @@ export const useAppStore = defineStore("app", () => {
       }
     } catch (e) {
       console.error("從 URL 載入教材詳情失敗:", e);
+    } finally {
+      afterSkeletonDelay(() => {
+        isLoadingAiMaterial.value = false;
+      });
     }
 
     // 載入會話列表
+    isLoadingAiSessions.value = true;
     try {
       const res = await listSessions({
         query: { materialId },
@@ -785,10 +871,15 @@ export const useAppStore = defineStore("app", () => {
       aiSessions.value = res.data || [];
     } catch (err) {
       console.error("從 URL 載入會話列表失敗:", err);
+    } finally {
+      afterSkeletonDelay(() => {
+        isLoadingAiSessions.value = false;
+      });
     }
 
     // 選定該會話並讀取訊息
     activeAiSessionId.value = sessionId;
+    isLoadingAiMessages.value = true;
     try {
       const res = await getSessionMessages({
         path: { sessionId },
@@ -797,6 +888,10 @@ export const useAppStore = defineStore("app", () => {
       aiMessages.value = res.data || [];
     } catch (err) {
       console.error("取得會話歷史訊息失敗:", err);
+    } finally {
+      afterSkeletonDelay(() => {
+        isLoadingAiMessages.value = false;
+      });
     }
   }
 
@@ -841,6 +936,7 @@ export const useAppStore = defineStore("app", () => {
     isQuizMode.value = false;
     activeQuiz.value = null;
     isManagingPool.value = false;
+    isLoadingAiMessages.value = true;
 
     // 導向路由 (避免重複導向)
     if (activeServerId.value && aiMaterial.value) {
@@ -858,6 +954,10 @@ export const useAppStore = defineStore("app", () => {
       aiMessages.value = res.data || [];
     } catch (err) {
       console.error("取得會話歷史訊息失敗:", err);
+    } finally {
+      afterSkeletonDelay(() => {
+        isLoadingAiMessages.value = false;
+      });
     }
   }
 
@@ -1053,7 +1153,6 @@ export const useAppStore = defineStore("app", () => {
 
   async function uploadAndPublishMaterial(file: File, content: string) {
     if (!activeServerId.value || !activeChannelId.value) return;
-    isLoading.value = true;
     try {
       // 1. 取得預簽名上傳網址與 fileKey
       const uploadUrlRes = await getUploadUrl({
@@ -1106,8 +1205,6 @@ export const useAppStore = defineStore("app", () => {
         err.error?.message || err.message || "上傳失敗，請檢查空間配額與權限。";
       alert("上傳教材失敗: " + errorMsg);
       throw err;
-    } finally {
-      isLoading.value = false;
     }
   }
 
@@ -1220,6 +1317,7 @@ export const useAppStore = defineStore("app", () => {
   }
 
   async function fetchQuizReportData(quizId: string) {
+    isLoadingQuizReport.value = true;
     try {
       const res = await getQuizReport({
         path: { quizId },
@@ -1229,6 +1327,10 @@ export const useAppStore = defineStore("app", () => {
     } catch (err) {
       console.error("取得測驗報告失敗:", err);
       throw err;
+    } finally {
+      afterSkeletonDelay(() => {
+        isLoadingQuizReport.value = false;
+      });
     }
   }
 
@@ -1252,10 +1354,14 @@ export const useAppStore = defineStore("app", () => {
     avatarUrl: string | null;
   } | null>(null);
 
+  // 懸浮用戶卡片載入中的狀態，取得個人資料前顯示 Skeleton 佔位用
+  const isLoadingProfile = ref(false);
+
   async function fetchCurrentUserProfile() {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    isLoadingProfile.value = true;
     try {
-      const token = localStorage.getItem("token");
-      if (!token) return;
       const res = await getUserProfile({ throwOnError: true });
       if (res.data) {
         currentUser.value = {
@@ -1267,6 +1373,10 @@ export const useAppStore = defineStore("app", () => {
       }
     } catch (err) {
       console.error("取得使用者資料失敗:", err);
+    } finally {
+      afterSkeletonDelay(() => {
+        isLoadingProfile.value = false;
+      });
     }
   }
 
@@ -1325,7 +1435,6 @@ export const useAppStore = defineStore("app", () => {
   }
 
   async function fetchWrongQuestionsAnalysis(materialId: string) {
-    isLoading.value = true;
     try {
       const response = await client.get<any[]>({
         url: `/v1/materials/${materialId}/analysis/wrong-questions`,
@@ -1334,13 +1443,10 @@ export const useAppStore = defineStore("app", () => {
     } catch (err) {
       console.error("取得錯題分析失敗:", err);
       throw err;
-    } finally {
-      isLoading.value = false;
     }
   }
 
   async function fetchDoubtAnalysis(materialId: string, regenerate = false) {
-    isLoading.value = true;
     try {
       const response = await client.get<any>({
         url: `/v1/materials/${materialId}/analysis/doubts`,
@@ -1350,8 +1456,6 @@ export const useAppStore = defineStore("app", () => {
     } catch (err) {
       console.error("取得疑問分析失敗:", err);
       throw err;
-    } finally {
-      isLoading.value = false;
     }
   }
 
@@ -1363,12 +1467,15 @@ export const useAppStore = defineStore("app", () => {
     materialUrlCache,
     currentRole,
     serverMembers,
+    onlineUserIds,
     showMemberList,
     getRandomColor,
     avatarColors,
     channelPages,
     channelHasMore,
     isFetchingMore,
+    isLoadingMessages,
+    isLoadingMembers,
     loadMoreMessages,
     lastActiveChannelPerServer,
     channelScrollPositions,
@@ -1394,6 +1501,10 @@ export const useAppStore = defineStore("app", () => {
     activeAiSessionId,
     aiMessages,
     isAiLoading,
+    isLoadingAiSessions,
+    isLoadingAiMaterial,
+    isLoadingAiMessages,
+    isLoadingQuizReport,
     activeServerId,
     activeChannelId,
     activeServer,
@@ -1401,6 +1512,7 @@ export const useAppStore = defineStore("app", () => {
     activeChannel,
     isLoading,
     currentUser,
+    isLoadingProfile,
     fetchServers,
     selectServer,
     selectChannel,

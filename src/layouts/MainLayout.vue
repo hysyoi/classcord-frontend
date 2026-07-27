@@ -1,4 +1,7 @@
 <template>
+  <Transition name="fade">
+    <FullscreenLoader v-if="!isAppReady" />
+  </Transition>
   <div class="top-announcement-bar">
     {{
       store.isLoading
@@ -39,10 +42,30 @@
       <router-view v-else />
     </div>
 
+    <!-- 懸浮式用戶卡片載入中 Skeleton 佔位 -->
+    <div
+      class="user-card-floating"
+      v-if="store.isLoadingProfile && !store.activeQuiz"
+      :style="{ width: userCardWidth + 'px' }"
+    >
+      <div class="user-card-avatar-info">
+        <div class="user-avatar">
+          <Skeleton class="user-avatar-skeleton" />
+        </div>
+        <div class="user-info">
+          <Skeleton class="user-username-skeleton" />
+          <Skeleton class="user-status-skeleton" />
+        </div>
+      </div>
+      <div class="user-controls">
+        <Skeleton class="control-btn-skeleton" />
+      </div>
+    </div>
+
     <!-- 懸浮式用戶卡片 -->
     <div
       class="user-card-floating"
-      v-if="store.currentUser && !store.activeQuiz"
+      v-else-if="store.currentUser && !store.activeQuiz"
       :style="{ width: userCardWidth + 'px' }"
     >
       <div class="user-card-avatar-info">
@@ -101,12 +124,21 @@
 </template>
 
 <script lang="ts" setup>
-import { onMounted, computed, ref, onUnmounted } from "vue";
+import {
+  onMounted,
+  computed,
+  ref,
+  onUnmounted,
+  nextTick,
+  watchEffect,
+} from "vue";
 import ChannelList from "@/components/ChannelList.vue";
 import ServerList from "@/components/ServerList.vue";
 import AiSessionList from "@/components/AiSessionList.vue";
+import FullscreenLoader from "@/components/FullscreenLoader.vue";
 import { useAppStore } from "@/store/useAppStore";
 import { useAuthStore } from "@/store/useAuthStore";
+import { Skeleton } from "@/components/ui/skeleton";
 import Avatar from "vue-boring-avatars";
 import Logout2OutlineIcon from "~icons/solar/logout-2-outline";
 
@@ -178,24 +210,59 @@ const handleLogout = async () => {
   router.push("/login");
 };
 
-onMounted(() => {
-  store.fetchServers();
-  store.fetchCurrentUserProfile();
+const isAppReady = ref(false);
+
+onMounted(async () => {
   window.addEventListener("resize", handleWindowResize);
   window.addEventListener("click", closeUserMenu);
-  // Measure pane size after rendering completes
-  setTimeout(() => {
-    handlePaneResize();
-  }, 150);
+
+  // 等 Vue 把 splitpanes 的 DOM 更新完再量測，避免用猜測值 (240px) 先畫一次
+  // 造成使用者卡片寬度肉眼可見地跳動
+  await nextTick();
+  handlePaneResize();
+
+  // 全螢幕載入畫面：等初始資料載入完成才淡出。
+  // fetchServers/fetchCurrentUserProfile 內部已各自 try/catch，即使失敗也會 resolve，
+  // 另外加上逾時保險，避免請求卡住時使用者被永遠卡在載入畫面。
+  const initialLoad = Promise.all([
+    store.fetchServers(),
+    store.fetchCurrentUserProfile(),
+  ]);
+  const timeout = new Promise((resolve) => setTimeout(resolve, 8000));
+  await Promise.race([initialLoad, timeout]);
+  isAppReady.value = true;
+});
+
+// 分頁標題：依目前選取的頻道 / 班級動態顯示，切換時即時更新
+watchEffect(() => {
+  const channelName = store.activeChannel?.name;
+  const serverName = store.activeServer?.name;
+
+  if (channelName && serverName) {
+    document.title = `Classcord | #${channelName} | ${serverName}`;
+  } else if (serverName) {
+    document.title = `Classcord | ${serverName}`;
+  } else {
+    document.title = "Classcord - AI 驅動的社群學習網路";
+  }
 });
 
 onUnmounted(() => {
   window.removeEventListener("resize", handleWindowResize);
   window.removeEventListener("click", closeUserMenu);
+  document.title = "Classcord - AI 驅動的社群學習網路";
 });
 </script>
 
 <style scoped>
+.fade-leave-active {
+  transition: opacity 0.5s ease;
+}
+
+.fade-leave-to {
+  opacity: 0;
+}
+
 .top-announcement-bar {
   top: 0;
   width: 100%;
@@ -260,6 +327,34 @@ onUnmounted(() => {
   background: var(--bg-surface-light-hover);
   /*color: #dbdee1;*/
   color: var(--bg-surface-light-text-muted);
+}
+
+/* 用戶卡片載入中的 Skeleton 佔位 */
+.user-avatar-skeleton {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+.user-username-skeleton {
+  height: 14px;
+  width: 80px;
+  margin-bottom: 5px;
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+.user-status-skeleton {
+  height: 12px;
+  width: 120px;
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+.control-btn-skeleton {
+  width: 30px;
+  height: 30px;
+  border-radius: 4px;
+  background-color: rgba(255, 255, 255, 0.08);
 }
 
 /* 靜音按鈕的斜線 */

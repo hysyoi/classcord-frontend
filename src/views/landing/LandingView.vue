@@ -10,7 +10,9 @@
         <nav class="nav-links">
           <a href="#features">特色功能</a>
           <!-- <a href="#about">關於我們</a> -->
-          <a href="https://github.com/hysyoi" target="_blank">GitHub</a>
+          <a href="https://github.com/hysyoi/classcord-backend" target="_blank"
+            >GitHub</a
+          >
         </nav>
         <div>
           <button @click="handleActionClick" class="nav-btn">
@@ -24,6 +26,18 @@
     <section class="hero">
       <!-- Background glowing orb -->
       <div class="glowing-orb"></div>
+      <div class="announce">
+        #1 生成Anki記憶卡片功能即將上線！─ 敬請期待。
+        <BorderBeam
+          :size="200"
+          :height="18"
+          :duration="20"
+          :border-width="0.5"
+          :glow="3"
+          color-from="#fff"
+          color-to="#353a50e6"
+        />
+      </div>
 
       <div class="hero-content">
         <div class="hero-content-inner">
@@ -50,12 +64,15 @@
             </p>
           </div>
           <div class="hero-media">
+            <Skeleton v-if="!heroVideoLoaded" class="media-skeleton" />
             <video
               src="https://cdn-classcord.hys-lab.com/intro-blur.mp4"
               muted
               loop
               playsinline
-              @loadeddata="onVideoReady"
+              class="media-video"
+              :class="{ 'media-video--hidden': !heroVideoLoaded }"
+              @loadeddata="onHeroVideoReady"
             ></video>
           </div>
         </div>
@@ -121,13 +138,27 @@
               <h3>{{ item.title }}</h3>
               <p>{{ item.desc }}</p>
             </div>
-            <div class="feature-row-media">
+            <div
+              class="feature-row-media"
+              :style="
+                featureVideoRatio[index]
+                  ? { aspectRatio: String(featureVideoRatio[index]) }
+                  : undefined
+              "
+            >
+              <Skeleton
+                v-if="!featureVideoLoaded[index]"
+                class="media-skeleton"
+              />
               <video
                 :src="item.video"
                 muted
                 loop
                 playsinline
-                @loadeddata="onVideoReady"
+                class="media-video"
+                :class="{ 'media-video--hidden': !featureVideoLoaded[index] }"
+                @loadedmetadata="onFeatureVideoMeta($event, index)"
+                @loadeddata="onFeatureVideoReady($event, index)"
               ></video>
             </div>
           </div>
@@ -147,6 +178,9 @@
 import { ref, computed, onMounted, onBeforeUnmount } from "vue";
 import { useRouter } from "vue-router";
 import { useAuthStore } from "@/store/useAuthStore";
+import { BorderBeam } from "@/components/ui/border-beam";
+import { Skeleton } from "@/components/ui/skeleton";
+import { afterSkeletonDelay } from "@/lib/debug";
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -260,7 +294,7 @@ const features = [
     color: "cyan",
     icon: "💡",
     title: "班級焦點報告",
-    desc: "智慧分析聊天頻道中的學生提問，由 AI 自動提煉核心疑問焦點報告，教師一鍵掌握學生痛點。",
+    desc: "智慧統計學生提問，由 AI 自動提煉核心疑問焦點報告，教師一鍵掌握學生痛點。",
     video: "https://cdn-classcord.hys-lab.com/students_analysis.mp4",
   },
 ];
@@ -272,6 +306,35 @@ const onVideoReady = (e: Event) => {
   const el = e.target as HTMLVideoElement;
   el.muted = true;
   el.play().catch(() => {});
+};
+
+// 影片載入前用 Skeleton 佔位，loadeddata 觸發後才淡入影片本身
+const heroVideoLoaded = ref(false);
+const featureVideoLoaded = ref(features.map(() => false));
+
+// loadedmetadata 比 loadeddata 更早觸發，此時已知影片真實尺寸，
+// 用來即時校正容器比例，避免用固定 16:9 裁切到非 16:9 的影片內容。
+const featureVideoRatio = ref<(number | null)[]>(features.map(() => null));
+
+const onHeroVideoReady = (e: Event) => {
+  onVideoReady(e);
+  afterSkeletonDelay(() => {
+    heroVideoLoaded.value = true;
+  });
+};
+
+const onFeatureVideoMeta = (e: Event, index: number) => {
+  const el = e.target as HTMLVideoElement;
+  if (el.videoWidth && el.videoHeight) {
+    featureVideoRatio.value[index] = el.videoWidth / el.videoHeight;
+  }
+};
+
+const onFeatureVideoReady = (e: Event, index: number) => {
+  onVideoReady(e);
+  afterSkeletonDelay(() => {
+    featureVideoLoaded.value[index] = true;
+  });
 };
 </script>
 
@@ -400,6 +463,24 @@ const onVideoReady = (e: Event) => {
   background-repeat: no-repeat;
 }
 
+.announce {
+  position: relative;
+  color: #ffffff;
+  padding: 6px 16px;
+  border-radius: 99px;
+  border: 1px solid
+    color-mix(in srgb, var(--bg-surface-border) 90%, transparent);
+  font-size: 0.85rem;
+  background-color: color-mix(
+    in srgb,
+    var(--bg-surface-border) 10%,
+    transparent
+  );
+  margin: 24px 0 32px 0;
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px); /* 舊版 Safari 相容 */
+}
+
 .glowing-orb {
   position: absolute;
   top: -10rem;
@@ -452,6 +533,7 @@ const onVideoReady = (e: Event) => {
 }
 
 .hero-media {
+  position: relative;
   flex: 1.6;
   width: 100%;
   aspect-ratio: 16 / 9;
@@ -473,6 +555,25 @@ const onVideoReady = (e: Event) => {
   object-fit: cover;
   object-position: center 50%;
   display: block;
+}
+
+/* 影片載入 Skeleton 佔位 */
+.media-skeleton {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+.media-video {
+  opacity: 1;
+  transition: opacity 0.3s ease;
+}
+
+.media-video--hidden {
+  opacity: 0;
 }
 
 .hero-title {
@@ -652,9 +753,11 @@ const onVideoReady = (e: Event) => {
 }
 
 .feature-row-media {
+  position: relative;
   flex: 1.6;
   min-width: 0;
-  /*aspect-ratio: 16 / 9;*/
+  /* 拿到影片真實尺寸前的暫時佔位比例，metadata 讀到後會被行內 style 覆蓋成該影片的真實比例 */
+  aspect-ratio: 16 / 9;
   border-radius: 18px;
   /*border: 2px solid rgba(255, 255, 255, 0.08);*/
   /*border: 6px solid var(--bg-main-text-muted);*/
@@ -758,7 +861,7 @@ const onVideoReady = (e: Event) => {
   }
 
   .hero {
-    padding: 10rem 1.5rem 6rem 1.5rem;
+    padding: 6rem 1.5rem 6rem 1.5rem;
     background-image:
       linear-gradient(
         to bottom,

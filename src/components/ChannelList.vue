@@ -13,7 +13,7 @@
           }}</span>
           <!-- 邀請成員按鈕 -->
           <button
-            v-if="store.activeServerId"
+            v-if="!store.isLoading && store.activeServerId"
             class="invite-header-btn"
             @click="openInviteModal"
             @mouseenter="showTooltip($event, '邀請成員', 'bottom')"
@@ -50,56 +50,81 @@
         <p class="empty-desc">請點擊右上方的「+」按鈕建立第一個頻道吧！</p>
       </div>
 
-      <!-- 頻道分組清單 -->
-      <div
-        v-for="category in store.activeServer?.categories"
-        :key="category.id"
-        class="category-block"
-      >
-        <div class="category-header-row">
-          <div class="category-name" @click="toggleCategory(category.id)">
-            {{ category.name }}
-            <ChevronBoldIcon
-              :class="{ collapsed: collapsedCategories[category.id] }"
-            />
+      <!-- 頻道分組清單載入中 Skeleton 佔位 -->
+      <template v-if="store.isLoading">
+        <div
+          v-for="group in skeletonGroups"
+          :key="`skeleton-${group}`"
+          class="category-block"
+        >
+          <div class="category-header-row">
+            <Skeleton class="category-name-skeleton" />
           </div>
-          <button
-            v-if="store.isTeacherOrTA && category.id !== 'ADMIN'"
-            class="add-channel-icon"
-            @click="openCreateChannelModal(category.id)"
-            @mouseenter="showTooltip($event, '建立頻道', 'top')"
-            @mouseleave="hideTooltip"
-          >
-            <RoundPlusIcon />
-          </button>
-        </div>
-
-        <template v-for="channel in category.channels" :key="channel.id">
           <div
-            v-show="
-              !collapsedCategories[category.id] ||
-              channel.id === store.activeChannelId
-            "
-            class="channel-item"
-            :class="{
-              active: channel.id === store.activeChannelId,
-              'has-unread': (store.unreadCounts[channel.id] || 0) > 0,
-            }"
-            @click="store.selectChannel(channel.id)"
+            v-for="item in skeletonChannelsPerGroup"
+            :key="`skeleton-${group}-${item}`"
+            class="channel-item channel-item-skeleton"
           >
             <div class="channel-name-with-hash">
-              <span class="hash"><TagRoundedIcon /></span>
-              <span class="channel-name-text">{{ channel.name }}</span>
+              <Skeleton class="hash-skeleton" />
+              <Skeleton class="channel-name-skeleton" />
             </div>
-            <span
-              v-if="(store.unreadCounts[channel.id] || 0) > 0"
-              class="unread-badge"
-            >
-              {{ store.unreadCounts[channel.id] }}
-            </span>
           </div>
-        </template>
-      </div>
+        </div>
+      </template>
+
+      <!-- 頻道分組清單 -->
+      <template v-else>
+        <div
+          v-for="category in store.activeServer?.categories"
+          :key="category.id"
+          class="category-block"
+        >
+          <div class="category-header-row">
+            <div class="category-name" @click="toggleCategory(category.id)">
+              {{ category.name }}
+              <ChevronBoldIcon
+                :class="{ collapsed: collapsedCategories[category.id] }"
+              />
+            </div>
+            <button
+              v-if="store.isTeacherOrTA && category.id !== 'ADMIN'"
+              class="add-channel-icon"
+              @click="openCreateChannelModal(category.id)"
+              @mouseenter="showTooltip($event, '建立頻道', 'top')"
+              @mouseleave="hideTooltip"
+            >
+              <RoundPlusIcon />
+            </button>
+          </div>
+
+          <template v-for="channel in category.channels" :key="channel.id">
+            <div
+              v-show="
+                !collapsedCategories[category.id] ||
+                channel.id === store.activeChannelId
+              "
+              class="channel-item"
+              :class="{
+                active: channel.id === store.activeChannelId,
+                'has-unread': (store.unreadCounts[channel.id] || 0) > 0,
+              }"
+              @click="store.selectChannel(channel.id)"
+            >
+              <div class="channel-name-with-hash">
+                <span class="hash"><TagRoundedIcon /></span>
+                <span class="channel-name-text">{{ channel.name }}</span>
+              </div>
+              <span
+                v-if="(store.unreadCounts[channel.id] || 0) > 0"
+                class="unread-badge"
+              >
+                {{ store.unreadCounts[channel.id] }}
+              </span>
+            </div>
+          </template>
+        </div>
+      </template>
     </div>
 
     <!-- 建立頻道 玻璃化彈窗 -->
@@ -258,6 +283,7 @@
 import { ref, computed } from "vue";
 import { useAppStore } from "../store/useAppStore";
 import { createChannel } from "@/api/generated";
+import { Skeleton } from "@/components/ui/skeleton";
 import TagRoundedIcon from "~icons/material-symbols/tag-rounded";
 import ChevronBoldIcon from "~icons/glyphs/chevron-bold";
 import GroupAddRoundedIcon from "~icons/material-symbols/group-add-rounded";
@@ -265,6 +291,10 @@ import RoundPlusIcon from "~icons/ic/round-plus";
 import CloseRoundedIcon from "~icons/material-symbols/close-rounded";
 
 const store = useAppStore();
+
+// 頻道列表載入中的 Skeleton 佔位形狀：模擬 2 個分類、每個分類 3 個頻道
+const skeletonGroups = [1, 2];
+const skeletonChannelsPerGroup = [1, 2, 3];
 
 const collapsedCategories = ref<Record<string, boolean>>({});
 
@@ -559,7 +589,8 @@ const handleCreateChannel = async () => {
 }
 
 .category-block {
-  margin-top: 12px;
+  margin-top: 14px;
+  margin-left: 5px;
 }
 
 .category-header-row {
@@ -672,6 +703,41 @@ const handleCreateChannel = async () => {
   font-size: 18px;
   color: var(--bg-main-dark-text-muted);
   transition: color 0.15s;
+}
+
+/* 頻道列表載入中的 Skeleton 佔位 */
+.category-name-skeleton {
+  height: 14px;
+  width: 70px;
+  margin: 2px 6px 6px 6px;
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+.channel-item-skeleton {
+  cursor: default;
+}
+
+.hash-skeleton {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  flex-shrink: 0;
+  background-color: rgba(255, 255, 255, 0.08);
+  margin-left: 0px;
+}
+
+.channel-name-skeleton {
+  height: 16px;
+  width: 100px;
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+.channel-item-skeleton:nth-child(3n + 2) .channel-name-skeleton {
+  width: 70px;
+}
+
+.channel-item-skeleton:nth-child(3n + 3) .channel-name-skeleton {
+  width: 130px;
 }
 
 .channel-item.active .hash {

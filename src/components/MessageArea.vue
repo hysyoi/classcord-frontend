@@ -3,7 +3,7 @@
     <div class="message-header">
       <div class="header-left">
         <span class="hash"><TagRoundedIcon /></span>
-        {{ store.activeChannel?.name }}
+        {{ store.isLoadingMessages ? "載入中..." : store.activeChannel?.name }}
       </div>
       <button
         class="header-action-btn"
@@ -27,156 +27,178 @@
           <!-- 佔位元素：當訊息較少時，自動將訊息推至底部，實現由下往上堆疊的 Discord 效果 -->
           <div class="message-spacer"></div>
 
-          <!-- Discord 風格頻道歡迎區塊 -->
-          <div v-if="store.activeChannel" class="channel-welcome-header">
-            <div class="welcome-icon">
-              <TagRoundedIcon />
-            </div>
-            <h1 class="welcome-title">
-              歡迎來到 #{{ store.activeChannel.name }}!
-            </h1>
-            <p class="welcome-subtitle">
-              這就是 #{{ store.activeChannel.name }} 頻道的起點。
-            </p>
-          </div>
-
-          <template
-            v-for="(message, index) in store.activeMessages"
-            :key="message.id"
-          >
-            <!-- 日期分割線 -->
+          <!-- 切換頻道、訊息載入中的 Skeleton 佔位 -->
+          <template v-if="store.isLoadingMessages">
             <div
-              v-if="shouldShowDateDivider(message, index)"
-              class="date-divider"
+              v-for="n in messageSkeletonRows"
+              :key="`message-skeleton-${n}`"
+              class="message message-skeleton"
             >
-              <span class="date-text">{{
-                formatDateDivider(message.createdAt)
-              }}</span>
-            </div>
-
-            <div
-              class="message"
-              :class="{ 'is-continuation': isContinuation(message, index) }"
-            >
-              <!-- 大頭貼：若非連續發言則顯示頭像，否則顯示懸浮時間佔位符 -->
-              <div v-if="!isContinuation(message, index)" class="avatar">
-                <img
-                  v-if="message.avatarUrl"
-                  :src="message.avatarUrl"
-                  class="avatar-img"
-                />
-                <Avatar
-                  v-else
-                  :name="message.username"
-                  variant="beam"
-                  :size="40"
-                  :colors="store.avatarColors"
-                />
+              <div class="avatar">
+                <Skeleton class="avatar-skeleton" />
               </div>
-              <div v-else class="continuation-time-placeholder">
-                <span class="continuation-time">{{
-                  getShortTime(message.createdAt)
+              <div class="message-content">
+                <div class="message-meta">
+                  <Skeleton class="username-skeleton" />
+                  <Skeleton class="timestamp-skeleton" />
+                </div>
+                <Skeleton class="message-text-skeleton" />
+              </div>
+            </div>
+          </template>
+
+          <template v-else>
+            <!-- Discord 風格頻道歡迎區塊 -->
+            <div v-if="store.activeChannel" class="channel-welcome-header">
+              <div class="welcome-icon">
+                <TagRoundedIcon />
+              </div>
+              <h1 class="welcome-title">
+                歡迎來到 #{{ store.activeChannel.name }}!
+              </h1>
+              <p class="welcome-subtitle">
+                這就是 #{{ store.activeChannel.name }} 頻道的起點。
+              </p>
+            </div>
+
+            <template
+              v-for="(message, index) in store.activeMessages"
+              :key="message.id"
+            >
+              <!-- 日期分割線 -->
+              <div
+                v-if="shouldShowDateDivider(message, index)"
+                class="date-divider"
+              >
+                <span class="date-text">{{
+                  formatDateDivider(message.createdAt)
                 }}</span>
               </div>
 
-              <div class="message-content">
-                <!-- 只有非連續發言才顯示姓名與完整時間 -->
-                <div
-                  v-if="!isContinuation(message, index)"
-                  class="message-meta"
-                >
-                  <span class="username">{{ message.username }}</span>
-                  <span
-                    class="timestamp"
-                    @mouseenter="
-                      showTooltip(
-                        $event,
-                        formatTooltipTime(message.createdAt),
-                        'top',
-                      )
-                    "
-                    @mouseleave="hideTooltip"
-                  >
-                    {{ formatMetaTime(message.createdAt) }}
-                  </span>
+              <div
+                class="message"
+                :class="{ 'is-continuation': isContinuation(message, index) }"
+              >
+                <!-- 大頭貼：若非連續發言則顯示頭像，否則顯示懸浮時間佔位符 -->
+                <div v-if="!isContinuation(message, index)" class="avatar">
+                  <img
+                    v-if="message.avatarUrl"
+                    :src="message.avatarUrl"
+                    class="avatar-img"
+                  />
+                  <Avatar
+                    v-else
+                    :name="message.username"
+                    variant="beam"
+                    :size="40"
+                    :colors="store.avatarColors"
+                  />
                 </div>
-                <div class="message-text">{{ message.text }}</div>
+                <div v-else class="continuation-time-placeholder">
+                  <span class="continuation-time">{{
+                    getShortTime(message.createdAt)
+                  }}</span>
+                </div>
 
-                <!-- 教材顯示＆助教 -->
-                <div
-                  v-if="message.materials && message.materials.length > 0"
-                  class="message-attachments"
-                >
+                <div class="message-content">
+                  <!-- 只有非連續發言才顯示姓名與完整時間 -->
                   <div
-                    v-for="file in message.materials"
-                    :key="file.id"
-                    class="attachment-container"
+                    v-if="!isContinuation(message, index)"
+                    class="message-meta"
                   >
-                    <button
-                      class="attachment-hover-dl-btn"
-                      @click="store.downloadMaterial(file.id)"
-                      title="下載檔案"
+                    <span class="username">{{ message.username }}</span>
+                    <span
+                      class="timestamp"
+                      @mouseenter="
+                        showTooltip(
+                          $event,
+                          formatTooltipTime(message.createdAt),
+                          'top',
+                        )
+                      "
+                      @mouseleave="hideTooltip"
                     >
-                      <DownloadRoundedIcon />
-                    </button>
+                      {{ formatMetaTime(message.createdAt) }}
+                    </span>
+                  </div>
+                  <div class="message-text">{{ message.text }}</div>
 
-                    <div class="attachment-card">
-                      <div class="attachment-left">
-                        <div class="attachment-icon-wrapper">
-                          <lord-icon
-                            src="https://cdn.lordicon.com/kydcudfv.json"
-                            trigger="hover"
-                            class="current-color"
-                            style="width: 100%; height: 100%"
-                          >
-                          </lord-icon>
-                        </div>
-                        <div class="attachment-info">
-                          <div
-                            class="attachment-name"
-                            :title="file.originalName"
-                          >
-                            {{ file.originalName }}
+                  <!-- 教材顯示＆助教 -->
+                  <div
+                    v-if="message.materials && message.materials.length > 0"
+                    class="message-attachments"
+                  >
+                    <div
+                      v-for="file in message.materials"
+                      :key="file.id"
+                      class="attachment-container"
+                    >
+                      <button
+                        class="attachment-hover-dl-btn"
+                        @click="store.downloadMaterial(file.id)"
+                        title="下載檔案"
+                      >
+                        <DownloadRoundedIcon />
+                      </button>
+
+                      <div class="attachment-card">
+                        <div class="attachment-left">
+                          <div class="attachment-icon-wrapper">
+                            <lord-icon
+                              src="https://cdn.lordicon.com/kydcudfv.json"
+                              trigger="hover"
+                              class="current-color"
+                              style="width: 100%; height: 100%"
+                            >
+                            </lord-icon>
                           </div>
-                          <div class="attachment-type">
-                            {{
-                              file.fileType.replace(".", "").toUpperCase() ||
-                              "UNKNOWN"
-                            }}
+                          <div class="attachment-info">
+                            <div
+                              class="attachment-name"
+                              :title="file.originalName"
+                            >
+                              {{ file.originalName }}
+                            </div>
+                            <div class="attachment-type">
+                              {{
+                                file.fileType.replace(".", "").toUpperCase() ||
+                                "UNKNOWN"
+                              }}
+                            </div>
                           </div>
                         </div>
-                      </div>
 
-                      <div class="action-buttons-group">
-                        <div class="ai-button-group">
-                          <FlatButton
-                            v-if="file.status === 'ENABLED'"
-                            @click="openAiChat(file)"
-                          >
-                            <AiFillIcon />AI 助教
-                          </FlatButton>
+                        <div class="action-buttons-group">
+                          <div class="ai-button-group">
+                            <FlatButton
+                              v-if="file.status === 'ENABLED'"
+                              @click="openAiChat(file)"
+                            >
+                              <AiFillIcon />AI 助教
+                            </FlatButton>
 
-                          <FlatButton
-                            v-slot:default
-                            v-else-if="file.status === 'PROCESSING'"
-                            :disabled="true"
-                          >
-                            <LoadingLoopIcon />AI 處理中...
-                          </FlatButton>
+                            <FlatButton
+                              v-slot:default
+                              v-else-if="file.status === 'PROCESSING'"
+                              :disabled="true"
+                            >
+                              <LoadingLoopIcon />AI 處理中...
+                            </FlatButton>
 
-                          <FlatButton
-                            v-else-if="store.isTeacherOrTA"
-                            @click="store.toggleAiAssistant(file.id)"
-                          >
-                            <ThunderIcon />啟用 AI
-                          </FlatButton>
+                            <FlatButton
+                              v-else-if="store.isTeacherOrTA"
+                              @click="store.toggleAiAssistant(file.id)"
+                            >
+                              <ThunderIcon />啟用 AI
+                            </FlatButton>
+                          </div>
                         </div>
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
+            </template>
           </template>
         </div>
 
@@ -208,6 +230,7 @@ import MessageInput from "./MessageInput.vue";
 import MemberList from "./MemberList.vue";
 import FlatButton from "./FlatButton.vue";
 import { useAppStore } from "../store/useAppStore";
+import { Skeleton } from "@/components/ui/skeleton";
 import SidebarRightIcon from "~icons/akar-icons/sidebar-right";
 import AiFillIcon from "~icons/mingcute/ai-fill";
 import LoadingLoopIcon from "~icons/line-md/loading-loop";
@@ -216,6 +239,9 @@ import Avatar from "vue-boring-avatars";
 
 const store = useAppStore();
 const messageListRef = ref<HTMLDivElement | null>(null);
+
+// 訊息區載入中的 Skeleton 佔位列數
+const messageSkeletonRows = 7;
 
 // 滾動至底部
 const scrollToBottom = () => {
@@ -232,6 +258,11 @@ let scrollTimeout: number | null = null;
 let resizeObserver: ResizeObserver | null = null;
 
 const handleScroll = async () => {
+  // 訊息載入中 (Skeleton 顯示中) 時，內容比真實歷史訊息矮很多，瀏覽器偵測到可捲動範圍變小
+  // 會自動把 scrollTop 夾到接近 0，這個「自動夾擠」動作本身也會觸發 scroll 事件。
+  // 這裡直接跳過，避免把這個被夾出來的錯誤值誤存成該頻道的捲軸記憶，覆蓋掉真正的使用者位置。
+  if (store.isLoadingMessages) return;
+
   isScrolling.value = true;
   if (scrollTimeout) {
     clearTimeout(scrollTimeout);
@@ -276,41 +307,75 @@ const handleScroll = async () => {
   }
 };
 
-// 監聽頻道切換與訊息長度改變，精準控制滾動條記憶還原與新訊息自動探底
+// 記錄「正在等待哪個頻道的訊息載入完成後要還原捲軸位置」，
+// 避免頻道剛切換、訊息還沒抓回來 (activeMessages 仍是空的) 時就提早還原，導致還原了也沒用、
+// 之後新訊息陣列灌入時又被「是否貼底」的判斷誤判成不在底部而卡在頂端。
+// 拆成三個獨立的 watch（切換頻道 / 載入完成 / 訊息數量變化），避免多來源陣列 watch 混在一起
+// 可能產生的時序誤判，每個 watch 各自單純、好驗證。
+const pendingScrollRestoreChannelId = ref<string | null>(null);
+
+const restoreScrollForChannel = (channelId: string) => {
+  nextTick(() => {
+    if (!messageListRef.value) return;
+    if (pendingScrollRestoreChannelId.value !== channelId) return;
+    if (store.activeChannelId !== channelId || store.isLoadingMessages) return;
+
+    pendingScrollRestoreChannelId.value = null;
+    const savedPos = store.channelScrollPositions[channelId];
+    if (savedPos !== undefined) {
+      messageListRef.value.scrollTop = savedPos;
+    } else {
+      messageListRef.value.scrollTop = messageListRef.value.scrollHeight;
+    }
+  });
+};
+
+// 1. 偵測到頻道切換：只負責標記「等這個頻道的訊息載入完成後要還原捲軸」，不碰任何 DOM
 watch(
-  [() => store.activeChannelId, () => store.activeMessages.length],
-  ([newChannelId /*,newLength*/], [oldChannelId /*,oldLength*/]) => {
+  () => store.activeChannelId,
+  (newChannelId, oldChannelId) => {
     isScrolling.value = false;
     if (scrollTimeout) {
       clearTimeout(scrollTimeout);
       scrollTimeout = null;
     }
+    if (!newChannelId || newChannelId === oldChannelId) return;
 
-    if (!newChannelId) return;
+    pendingScrollRestoreChannelId.value = newChannelId;
+    // 若此時訊息剛好已經是載入完成狀態 (例如目標頻道先前已快取過)，直接嘗試還原一次；
+    // 若還在載入中，交給下面的 isLoadingMessages watcher 在載入完成當下處理。
+    if (!store.isLoadingMessages) {
+      restoreScrollForChannel(newChannelId);
+    }
+  },
+);
 
+// 2. 偵測到訊息真正載入完成 (isLoadingMessages: true -> false)：這是還原捲軸唯一保證安全的時機點
+watch(
+  () => store.isLoadingMessages,
+  (isLoading, wasLoading) => {
+    if (wasLoading && !isLoading && store.activeChannelId) {
+      restoreScrollForChannel(store.activeChannelId);
+    }
+  },
+);
+
+// 3. 同一頻道訊息數量變化 (新訊息發送/接收，非頻道切換造成)：
+//    只有當使用者本來就位於底部附近時才自動滾動至最底，避免打斷使用者的歷史閱讀
+watch(
+  () => store.activeMessages.length,
+  () => {
+    if (store.isLoadingMessages || pendingScrollRestoreChannelId.value) return;
     nextTick(() => {
-      if (messageListRef.value) {
-        if (newChannelId !== oldChannelId) {
-          // 頻道切換：恢復此頻道上次的滾動位置，若無紀錄則預設滾動至最底部
-          const savedPos = store.channelScrollPositions[newChannelId];
-          if (savedPos !== undefined) {
-            messageListRef.value.scrollTop = savedPos;
-          } else {
-            messageListRef.value.scrollTop = messageListRef.value.scrollHeight;
-          }
-        } else {
-          // 同一頻道訊息增加 (新訊息發送/接收)：
-          // 只有當使用者本來就位於底部附近時才自動滾動至最底，避免打斷使用者的歷史閱讀
-          const threshold = 150;
-          const isNearBottom =
-            messageListRef.value.scrollHeight -
-              messageListRef.value.scrollTop -
-              messageListRef.value.clientHeight <
-            threshold;
-          if (isNearBottom) {
-            messageListRef.value.scrollTop = messageListRef.value.scrollHeight;
-          }
-        }
+      if (!messageListRef.value) return;
+      const threshold = 150;
+      const isNearBottom =
+        messageListRef.value.scrollHeight -
+          messageListRef.value.scrollTop -
+          messageListRef.value.clientHeight <
+        threshold;
+      if (isNearBottom) {
+        messageListRef.value.scrollTop = messageListRef.value.scrollHeight;
       }
     });
   },
@@ -318,13 +383,12 @@ watch(
 
 onMounted(() => {
   const channelId = store.activeChannelId;
-  if (channelId && messageListRef.value) {
-    const savedPos = store.channelScrollPositions[channelId];
-    if (savedPos !== undefined) {
-      messageListRef.value.scrollTop = savedPos;
-    } else {
-      messageListRef.value.scrollTop = messageListRef.value.scrollHeight;
+  if (channelId) {
+    pendingScrollRestoreChannelId.value = channelId;
+    if (!store.isLoadingMessages) {
+      restoreScrollForChannel(channelId);
     }
+    // 若掛載當下訊息還在載入中 (例如剛整頁重新整理)，交給上面的 isLoadingMessages watcher 處理
   } else {
     scrollToBottom();
   }
@@ -716,6 +780,45 @@ const openAiChat = (file: any) => {
   line-height: 1.4; /* 調整行高以適配多行換行，防止重疊 */
   word-break: break-word;
   white-space: pre-wrap; /* 關鍵：保留並顯示訊息中的換行符號 */
+}
+
+/* 訊息區載入中的 Skeleton 佔位 */
+.message-skeleton {
+  cursor: default;
+}
+
+.avatar-skeleton {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.06);
+}
+
+.username-skeleton {
+  height: 16px;
+  width: 90px;
+  background-color: rgba(255, 255, 255, 0.06);
+}
+
+.timestamp-skeleton {
+  height: 11px;
+  width: 120px;
+  background-color: rgba(255, 255, 255, 0.06);
+}
+
+.message-text-skeleton {
+  margin-top: 12px;
+  height: 16px;
+  width: 55%;
+  background-color: rgba(255, 255, 255, 0.06);
+}
+
+.message-skeleton:nth-child(3n + 2) .message-text-skeleton {
+  width: 35%;
+}
+
+.message-skeleton:nth-child(3n + 3) .message-text-skeleton {
+  width: 75%;
 }
 
 /* 附件與 AI 助教樣式 */

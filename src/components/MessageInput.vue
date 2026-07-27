@@ -86,6 +86,7 @@
         <input
           v-if="showUploadButton"
           type="file"
+          accept=".md"
           ref="fileInputRef"
           class="hidden-file-input"
           @change="onFileSelected"
@@ -185,8 +186,9 @@ const handleKeydown = (e: KeyboardEvent) => {
   }
 };
 
-// 檢查是否為限制發言頻道且使用者為學生
+// 檢查是否為限制發言頻道且使用者為學生，或訊息還在載入中
 const isDisabled = computed(() => {
+  if (store.isLoadingMessages) return true;
   const channelType = store.activeChannel?.type;
   return (
     (channelType === "MATERIAL" || channelType === "ADMIN") &&
@@ -200,6 +202,9 @@ const showUploadButton = computed(() => {
 });
 
 const placeholderText = computed(() => {
+  if (store.isLoadingMessages) {
+    return "載入中...";
+  }
   if (isUploading.value) {
     return "檔案上傳中，請稍候...";
   }
@@ -226,7 +231,13 @@ const triggerFileSelect = () => {
 const onFileSelected = (event: Event) => {
   const target = event.target as HTMLInputElement;
   if (target.files && target.files.length > 0) {
-    selectedFile.value = target.files[0];
+    const file = target.files[0];
+    if (!file.name.toLowerCase().endsWith(".md")) {
+      alert("僅能上傳 .md 格式的教材檔案");
+      target.value = "";
+      return;
+    }
+    selectedFile.value = file;
   }
 };
 
@@ -276,6 +287,7 @@ const formatBytes = (bytes: number, decimals = 2) => {
 
 <style scoped>
 .input-area {
+  position: relative; /* 作為附加檔案預覽卡片浮動定位的基準 */
   margin: 0 8px 8px 9px; /* 底部與兩側留空，使其懸浮 */
   background: transparent; /* 背景透明，與聊天視窗完美融為一體 */
   border-top: none; /* 移除頂部實線，消除分割感 */
@@ -397,8 +409,10 @@ const formatBytes = (bytes: number, decimals = 2) => {
 
 /* 夾帶檔案預覽 */
 .attachment-preview-wrapper {
+  position: absolute; /* 脫離文件流，改為浮在輸入框上方，不再佔用版面高度 */
+  bottom: 100%;
+  left: 0;
   display: flex;
-  height: 72px;
   margin-bottom: 8px;
   animation: slideInUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -419,10 +433,10 @@ const formatBytes = (bytes: number, decimals = 2) => {
   align-items: center;
   gap: 12px;
   background: hsl(
-    var(--bg-surface-base) 21% / 0.75
+    var(--bg-surface-base) 21% / 1
   ); /* --bg-surface-light with opacity */
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  /* backdrop-filter: blur(12px); */
+  /* -webkit-backdrop-filter: blur(12px); */
   border: 1px solid var(--bg-surface-light-border);
   border-radius: 12px;
   padding: 8px 14px;
