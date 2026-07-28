@@ -110,7 +110,9 @@
 
 @font-face {
   font-family: "jf-openhuninn";
-  src: url("./assets/jf-openhuninn-2.1.ttf") format("truetype");
+  src:
+    url("./assets/jf-openhuninn-2.1.woff2") format("woff2"),
+    url("./assets/jf-openhuninn-2.1.ttf") format("truetype");
   font-weight: normal;
   font-style: normal;
   font-display: swap;
