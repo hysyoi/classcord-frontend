@@ -117,7 +117,10 @@ function mapMember(m: any, defaultColor: string) {
     name,
     initial,
     color,
-    online: !!m.userId && store.onlineUserIds.has(m.userId),
+    // 自己一定在線（畢竟正在用 App 看這份名單），不用等後端的在線廣播，避免偶發的競態讓自己被誤判離線
+    online:
+      !!m.userId &&
+      (m.userId === store.currentUser?.id || store.onlineUserIds.has(m.userId)),
     avatarUrl: m.avatarUrl || null,
   };
 }
