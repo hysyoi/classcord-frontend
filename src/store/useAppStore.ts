@@ -26,6 +26,7 @@ import { Client } from "@stomp/stompjs";
 import { router } from "@/router";
 import { client } from "@/api/generated/client.gen";
 import { afterSkeletonDelay } from "@/lib/debug";
+import { queryClient } from "@/lib/queryClient";
 
 interface Material {
   id: string;
@@ -423,6 +424,20 @@ export const useAppStore = defineStore("app", () => {
             messages.value[channelId].push(newMsg);
           }
 
+          // 同步更新 vue-query 的歷史訊息快取 (page 0)，避免切頻道快取命中時
+          // 蓋回「還沒收到這則即時訊息」的舊快照，導致這則訊息憑空消失。
+          // 若該頻道尚未被快取過 (old 為 undefined)，代表沒有舊快照可能被蓋掉，略過即可。
+          queryClient.setQueryData(["messages", channelId, 0], (old: any) => {
+            if (!old) return old;
+            const content = old.data?.content || [];
+            const idx = content.findIndex((m: any) => m.id === payload.id);
+            const newContent =
+              idx !== -1
+                ? content.map((m: any, i: number) => (i === idx ? payload : m))
+                : [payload, ...content];
+            return { ...old, data: { ...old.data, content: newContent } };
+          });
+
           // 處理未讀計數：如果訊息不是當前正在看的頻道，則增加未讀數
           if (channelId !== activeChannelId.value) {
             unreadCounts.value[channelId] =
@@ -477,6 +492,12 @@ export const useAppStore = defineStore("app", () => {
     }
 
     activeServerId.value = id;
+    // 記住這次選取的班級 ID：channels/serverMembers/currentRole 都是單一共用變數
+    // (不像 messages 是用頻道 ID 分開存)，如果使用者在這次 await 期間又切去別的
+    // 班級，這次呼叫理論上已經「過期」了，不能讓它事後才回來的資料蓋掉使用者
+    // 目前正在看的新班級畫面，甚至誤觸發下面的自動選頻道跳轉。
+    const serverIdAtSelect = id;
+    const isStillActiveServer = () => activeServerId.value === serverIdAtSelect;
     channels.value = [];
     activeChannelId.value = null;
     currentRole.value = null;
@@ -487,34 +508,70 @@ export const useAppStore = defineStore("app", () => {
     subscribeToActiveServer();
 
     try {
-      const res = await getChannels({
-        path: { serverId: id },
-        throwOnError: true,
+      // 用 vue-query 快取頻道列表：短時間內切回同一個班級直接沿用快取、不必等網路。
+      // ensureQueryData 預設「只要有快取就回傳，不管新不新鮮」，所以要另外加
+      // revalidateIfStale: true，資料超過 staleTime 之後才會在背景默默重新拉一次
+      // 最新結果 (這次仍先回傳舊快取，下次再切回來就會是更新過的)。
+      const res = await queryClient.ensureQueryData({
+        queryKey: ["channels", id],
+        queryFn: () =>
+          getChannels({
+            path: { serverId: id },
+            throwOnError: true,
+          }),
+        revalidateIfStale: true,
       });
-      channels.value = (res.data || []).map((c: any) => ({
-        id: c.id,
-        name: c.name,
-        type: c.type || "GENERAL",
-        position: c.position || 0,
-      }));
+      if (isStillActiveServer()) {
+        channels.value = (res.data || []).map((c: any) => ({
+          id: c.id,
+          name: c.name,
+          type: c.type || "GENERAL",
+          position: c.position || 0,
+        }));
+      }
 
       // 取得成員列表以確認當前登入者身分角色 (用於 UI 按鈕判定)
-      const membersRes = await getServerMembers({
-        path: { serverId: id },
-        throwOnError: true,
+      // 同樣用 vue-query 快取：名單內容 (姓名/角色/大頭貼) 短時間內切回不必重打 API。
+      // 但「在線狀態」實際顯示邏輯 (MemberList.vue) 完全依賴 onlineUserIds 這個由
+      // /topic/presence 即時廣播維護的獨立集合，不吃 serverMembers 裡的 online 欄位，
+      // 所以快取名單本身是安全的。
+      const membersKey = ["serverMembers", id];
+      const prevUpdatedAt = queryClient.getQueryState(membersKey)?.dataUpdatedAt;
+      const membersRes = await queryClient.ensureQueryData({
+        queryKey: membersKey,
+        queryFn: () =>
+          getServerMembers({
+            path: { serverId: id },
+            throwOnError: true,
+          }),
+        revalidateIfStale: true,
       });
-      serverMembers.value = membersRes.data || [];
-      // 用剛取得的成員列表快照校正在線名單，之後再交由 /topic/presence 即時更新
-      for (const m of serverMembers.value) {
-        if (!m.userId) continue;
-        if (m.online) {
-          onlineUserIds.value.add(m.userId);
-        } else {
-          onlineUserIds.value.delete(m.userId);
+      const wasFreshFetch =
+        queryClient.getQueryState(membersKey)?.dataUpdatedAt !== prevUpdatedAt;
+
+      // 在線名單是跨伺服器共用的全域集合，用哪個班級的快照校正都無妨，
+      // 不需要跟著上面那個「還在不在同一個班級」的判斷走。
+      if (wasFreshFetch) {
+        for (const m of membersRes.data || []) {
+          if (!m.userId) continue;
+          if (m.online) {
+            onlineUserIds.value.add(m.userId);
+          } else {
+            onlineUserIds.value.delete(m.userId);
+          }
         }
       }
+
+      // 這次 await 期間如果使用者已經切去別的班級，剩下這些「反映到畫面」跟
+      // 「自動導向頻道」的動作全部略過——該抓的資料上面都已經抓了、也快取了，
+      // 只是不要讓這次過期的結果去干擾使用者現在正在看的新班級。
+      if (!isStillActiveServer()) return;
+
+      serverMembers.value = membersRes.data || [];
       afterSkeletonDelay(() => {
-        isLoadingMembers.value = false;
+        if (isStillActiveServer()) {
+          isLoadingMembers.value = false;
+        }
       });
       const token = localStorage.getItem("token");
       if (token) {
@@ -546,7 +603,9 @@ export const useAppStore = defineStore("app", () => {
       }
     } catch (err) {
       console.error(`取得伺服器 ${id} 的頻道與角色列表失敗:`, err);
-      isLoadingMembers.value = false;
+      if (isStillActiveServer()) {
+        isLoadingMembers.value = false;
+      }
     }
   }
 
@@ -557,6 +616,12 @@ export const useAppStore = defineStore("app", () => {
     }
 
     activeChannelId.value = id;
+    // 記住這次選取的頻道 ID：isLoadingMessages 是單一共用旗標 (不像 messages
+    // 是用頻道 ID 分開存)，如果使用者在下面這次 await 期間又切去別的頻道，
+    // 這次呼叫已經「過期」了，不能讓它事後才回來的結果去關掉使用者現在
+    // 正在看的新頻道的載入骨架、或誤把使用者導回 @me。
+    const channelIdAtSelect = id;
+    const isStillActiveChannel = () => activeChannelId.value === channelIdAtSelect;
     if (activeServerId.value) {
       lastActiveChannelPerServer.value[activeServerId.value] = id;
     }
@@ -576,12 +641,18 @@ export const useAppStore = defineStore("app", () => {
     }
 
     // 使用 REST API 拉取該頻道的歷史訊息
+    // 用 vue-query 快取：短時間內切回同一頻道不必重打 API 也不必等網路，
+    // 且上面 WebSocket 收到新訊息時會同步更新這份快取，不會蓋掉即時訊息。
     isLoadingMessages.value = true;
     try {
-      const res = await getMessages({
-        path: { channelId: id },
-        query: { page: 0, size: 50 },
-        throwOnError: true,
+      const res = await queryClient.ensureQueryData({
+        queryKey: ["messages", id, 0],
+        queryFn: () =>
+          getMessages({
+            path: { channelId: id },
+            query: { page: 0, size: 50 },
+            throwOnError: true,
+          }),
       });
 
       // 將歷史訊息（後端回傳為倒序）反轉為時間正序載入
@@ -612,13 +683,17 @@ export const useAppStore = defineStore("app", () => {
       console.error(`取得頻道 ${id} 的歷史訊息失敗:`, err);
       messages.value[id] = [];
       // 當權限不足 (403) 或頻道不存在 (404) 時，自動跳回 @me 頁面避免顯示異常空白
-      if (err?.status === 403 || err?.status === 404) {
+      // 但只有使用者還停留在這個 (有問題的) 頻道才導向；如果已經手動切去別的
+      // 正常頻道，這次過期的錯誤不該把使用者導離他現在看得好好的畫面。
+      if ((err?.status === 403 || err?.status === 404) && isStillActiveChannel()) {
         console.warn(`無權存取頻道 ${id}，重新導向至 /channels/@me`);
         router.push("/channels/@me");
       }
     } finally {
       afterSkeletonDelay(() => {
-        isLoadingMessages.value = false;
+        if (isStillActiveChannel()) {
+          isLoadingMessages.value = false;
+        }
       });
     }
   }
@@ -755,18 +830,34 @@ export const useAppStore = defineStore("app", () => {
     isAiLoading.value = false;
     isLoadingAiSessions.value = true;
 
+    // 記住這次進入的教材 ID：aiSessions 是單一共用變數 (不像 messages 用頻道 ID
+    // 分開存)，如果使用者在下面這次 await 期間又點開別的教材，這次呼叫就過期了，
+    // 不能讓它事後才回來的清單蓋掉使用者現在正在看的新教材的對話清單。
+    const materialIdAtEnter = material.id;
+    const isStillActiveMaterial = () => aiMaterial.value?.id === materialIdAtEnter;
+
     // 還原此教材的 Quiz 相關狀態
     activeQuiz.value = null; // 測驗進度退出即重來
     quizReport.value = materialQuizReports.value[material.id] || null;
     isQuizMode.value = materialQuizModes.value[material.id] || false;
 
     // 載入對話清單
+    // 用 vue-query 快取：對話清單跟 channels 一樣，短時間內重新打開同一份教材
+    // 直接沿用快取；資料變舊之後才在背景重新拉一次最新清單 (revalidateIfStale)。
     try {
-      const res = await listSessions({
-        query: { materialId: material.id },
-        throwOnError: true,
+      const data = await queryClient.ensureQueryData({
+        queryKey: ["aiSessions", material.id],
+        queryFn: async () => {
+          const res = await listSessions({
+            query: { materialId: material.id },
+            throwOnError: true,
+          });
+          return res.data || [];
+        },
+        revalidateIfStale: true,
       });
-      aiSessions.value = res.data || [];
+      if (!isStillActiveMaterial()) return;
+      aiSessions.value = [...data];
 
       let targetSessionId = "";
       const savedSessionId = lastActiveSessionPerMaterial.value[material.id];
@@ -786,6 +877,11 @@ export const useAppStore = defineStore("app", () => {
           });
           if (createRes.data && createRes.data.id) {
             aiSessions.value.unshift(createRes.data);
+            // 新建的會話要同步寫回快取，否則之後命中快取的清單會漏掉這一筆。
+            queryClient.setQueryData(
+              ["aiSessions", material.id],
+              [...aiSessions.value],
+            );
             targetSessionId = createRes.data.id;
           }
         }
@@ -800,7 +896,9 @@ export const useAppStore = defineStore("app", () => {
       console.error("進入 AI 模式失敗:", err);
     } finally {
       afterSkeletonDelay(() => {
-        isLoadingAiSessions.value = false;
+        if (isStillActiveMaterial()) {
+          isLoadingAiSessions.value = false;
+        }
       });
     }
   }
@@ -878,19 +976,35 @@ export const useAppStore = defineStore("app", () => {
     }
 
     // 選定該會話並讀取訊息
+    // 用 vue-query 快取：AI 對話是一對一的，不會有其他使用者同時寫入同一個對話，
+    // 沒有群組聊天那種需要跟 WebSocket 同步的併發風險，可以直接套用最單純的快取版本。
+    // 這裡也跟 selectAiSession 一樣記住這次的會話 ID：這個函式本身已經有好幾個
+    // await，過程中使用者完全可能在畫面上點了別的會話，這次呼叫就過期了。
     activeAiSessionId.value = sessionId;
+    const sessionIdAtSelect = sessionId;
+    const isStillActiveSession = () => activeAiSessionId.value === sessionIdAtSelect;
     isLoadingAiMessages.value = true;
     try {
-      const res = await getSessionMessages({
-        path: { sessionId },
-        throwOnError: true,
+      const data = await queryClient.ensureQueryData({
+        queryKey: ["aiSessionMessages", sessionId],
+        queryFn: async () => {
+          const res = await getSessionMessages({
+            path: { sessionId },
+            throwOnError: true,
+          });
+          return res.data || [];
+        },
       });
-      aiMessages.value = res.data || [];
+      if (isStillActiveSession()) {
+        aiMessages.value = [...data];
+      }
     } catch (err) {
       console.error("取得會話歷史訊息失敗:", err);
     } finally {
       afterSkeletonDelay(() => {
-        isLoadingAiMessages.value = false;
+        if (isStillActiveSession()) {
+          isLoadingAiMessages.value = false;
+        }
       });
     }
   }
@@ -931,6 +1045,12 @@ export const useAppStore = defineStore("app", () => {
     }
 
     activeAiSessionId.value = sessionId;
+    // 記住這次選取的會話 ID：aiMessages 是單一共用變數 (不像群組聊天的
+    // messages 是用頻道 ID 分開存)，如果使用者在下面這次 await 期間又切去
+    // 別的對話，這次呼叫已經「過期」了，不能讓它事後才回來的結果蓋掉使用者
+    // 現在正在看的新對話畫面。
+    const sessionIdAtSelect = sessionId;
+    const isStillActiveSession = () => activeAiSessionId.value === sessionIdAtSelect;
     aiMessages.value = [];
     isAiLoading.value = false;
     isQuizMode.value = false;
@@ -947,16 +1067,26 @@ export const useAppStore = defineStore("app", () => {
     }
 
     try {
-      const res = await getSessionMessages({
-        path: { sessionId },
-        throwOnError: true,
+      const data = await queryClient.ensureQueryData({
+        queryKey: ["aiSessionMessages", sessionId],
+        queryFn: async () => {
+          const res = await getSessionMessages({
+            path: { sessionId },
+            throwOnError: true,
+          });
+          return res.data || [];
+        },
       });
-      aiMessages.value = res.data || [];
+      if (isStillActiveSession()) {
+        aiMessages.value = [...data];
+      }
     } catch (err) {
       console.error("取得會話歷史訊息失敗:", err);
     } finally {
       afterSkeletonDelay(() => {
-        isLoadingAiMessages.value = false;
+        if (isStillActiveSession()) {
+          isLoadingAiMessages.value = false;
+        }
       });
     }
   }
@@ -972,6 +1102,11 @@ export const useAppStore = defineStore("app", () => {
       const newSession = res.data;
       if (newSession && newSession.id) {
         aiSessions.value.unshift(newSession);
+        // 同步寫回對話清單的快取，否則之後命中快取的清單會漏掉這個新會話。
+        queryClient.setQueryData(
+          ["aiSessions", aiMaterial.value.id],
+          [...aiSessions.value],
+        );
         await selectAiSession(newSession.id);
       }
     } catch (err) {
@@ -981,6 +1116,10 @@ export const useAppStore = defineStore("app", () => {
 
   async function sendAiMessage(content: string) {
     if (!activeAiSessionId.value) return;
+    // 記住發送當下的會話 ID：串流回覆期間使用者可能已經切去別的對話，
+    // 結束時要同步回「當初發送的那個會話」的快取，而不是切走後的新會話。
+    const sessionIdAtSend = activeAiSessionId.value;
+    const isStillActive = () => activeAiSessionId.value === sessionIdAtSend;
 
     const userMsg = {
       id: Math.random().toString(),
@@ -988,7 +1127,16 @@ export const useAppStore = defineStore("app", () => {
       content,
       createdAt: new Date().toISOString(),
     };
-    aiMessages.value.push(userMsg);
+
+    // 用本地陣列 (localMessages) 累積這次發送的訊息，不要直接寫共用的 aiMessages ref：
+    // 使用者送出後若切去別的對話，selectAiSession 會把 aiMessages.value 換成全新陣列，
+    // 這裡握著的 localMessages 參考仍是原本這個對話的內容，兩邊自然分開、不會互相污染。
+    // 只有「使用者還留在這個對話」才把最新內容同步進畫面；快取則一律同步 (見最下面
+    // finally)，確保訊息跟 AI 回覆不會因為中途切走就憑空消失。
+    let localMessages = [...aiMessages.value, userMsg];
+    if (isStillActive()) {
+      aiMessages.value = localMessages;
+    }
 
     isAiLoading.value = true;
 
@@ -1066,18 +1214,20 @@ export const useAppStore = defineStore("app", () => {
               currentEventData = "";
 
               if (!botMsg) {
-                isAiLoading.value = false; // 一收到回應立即關閉 Loading 轉為顯示打字
+                if (isStillActive()) isAiLoading.value = false; // 一收到回應立即關閉 Loading 轉為顯示打字
                 botMsg = {
                   id: Math.random().toString(),
                   role: "assistant",
                   content: "",
                   createdAt: new Date().toISOString(),
                 };
-                aiMessages.value.push(botMsg);
+                localMessages = [...localMessages, botMsg];
               }
               botMsg.content = accumulatedText;
-              // 🌟 強制觸發 Vue 3 的響應式陣列渲染更新！
-              aiMessages.value = [...aiMessages.value];
+              // 只有使用者還留在這個對話，才把最新內容同步進畫面
+              if (isStillActive()) {
+                aiMessages.value = [...localMessages];
+              }
             }
           }
         }
@@ -1102,18 +1252,19 @@ export const useAppStore = defineStore("app", () => {
       }
       if (accumulatedText) {
         if (!botMsg) {
-          isAiLoading.value = false;
+          if (isStillActive()) isAiLoading.value = false;
           botMsg = {
             id: Math.random().toString(),
             role: "assistant",
             content: "",
             createdAt: new Date().toISOString(),
           };
-          aiMessages.value.push(botMsg);
+          localMessages = [...localMessages, botMsg];
         }
         botMsg.content = accumulatedText;
-        // 🌟 強制觸發 Vue 3 的響應式陣列渲染更新！
-        aiMessages.value = [...aiMessages.value];
+        if (isStillActive()) {
+          aiMessages.value = [...localMessages];
+        }
       }
     } catch (err: any) {
       console.error("AI 流式對話失敗:", err);
@@ -1123,14 +1274,29 @@ export const useAppStore = defineStore("app", () => {
         displayContent = "⚠️ 本日全站 AI 額度已耗盡，請明天再試。";
       }
       // 若建立失敗或網路中斷，補回錯誤說明
-      aiMessages.value.push({
-        id: Math.random().toString(),
-        role: "assistant",
-        content: displayContent,
-        createdAt: new Date().toISOString(),
-      });
+      localMessages = [
+        ...localMessages,
+        {
+          id: Math.random().toString(),
+          role: "assistant",
+          content: displayContent,
+          createdAt: new Date().toISOString(),
+        },
+      ];
+      if (isStillActive()) {
+        aiMessages.value = [...localMessages];
+      }
     } finally {
-      isAiLoading.value = false;
+      if (isStillActive()) {
+        isAiLoading.value = false;
+      }
+      // 把這次發送/回覆的最終結果同步回快取：不管使用者中途有沒有切去別的對話，
+      // 都要把這份完整內容 (localMessages) 寫回「當初發送的那個會話」的快取，
+      // 否則下次切回來會命中快取拿到「還沒送出這則訊息」的舊快照，訊息就憑空消失了。
+      queryClient.setQueryData(
+        ["aiSessionMessages", sessionIdAtSend],
+        localMessages,
+      );
     }
   }
 
@@ -1319,11 +1485,22 @@ export const useAppStore = defineStore("app", () => {
   async function fetchQuizReportData(quizId: string) {
     isLoadingQuizReport.value = true;
     try {
-      const res = await getQuizReport({
-        path: { quizId },
-        throwOnError: true,
+      // 用 vue-query 快取：單一測驗報告是提交後就固定不變的歷史紀錄，
+      // 不像題庫/測驗歷史清單那樣會被「刪除題目」「重新出題」「提交新測驗」
+      // 之類的操作弄髒，內容不會變，所以 staleTime 設成永不過期，不用等 30 秒
+      // 到期就重打。記憶體則交給 gcTime 的預設值 (5 分鐘沒被用到就自動回收)把關，
+      // 不會因為設成永不過期就無限累積。
+      return await queryClient.ensureQueryData({
+        queryKey: ["quizReport", quizId],
+        queryFn: async () => {
+          const res = await getQuizReport({
+            path: { quizId },
+            throwOnError: true,
+          });
+          return res.data;
+        },
+        staleTime: Infinity,
       });
-      return res.data;
     } catch (err) {
       console.error("取得測驗報告失敗:", err);
       throw err;
@@ -1446,13 +1623,41 @@ export const useAppStore = defineStore("app", () => {
     }
   }
 
+  // client.get 預設不會在錯誤時拋例外 (只會回傳 data: undefined)，
+  // 但 vue-query 規定 queryFn 不能回傳 undefined，所以這裡要自己檢查並拋出，
+  // 同時保留呼叫端 (AdminAnalysisArea.vue) 期待的 err.response.status 格式，
+  // 讓「404 = 尚未生成過」的判斷式能真正生效。
+  async function requestDoubtAnalysis(materialId: string, regenerate: boolean) {
+    const result = await client.get<any>({
+      url: `/v1/materials/${materialId}/analysis/doubts`,
+      query: { regenerate },
+    });
+    if (result.error || result.data === undefined) {
+      const err: any = new Error("取得疑問分析失敗");
+      err.response = { status: result.response?.status, data: result.error };
+      throw err;
+    }
+    return result.data;
+  }
+
   async function fetchDoubtAnalysis(materialId: string, regenerate = false) {
+    const queryKey = ["doubtAnalysis", materialId];
     try {
-      const response = await client.get<any>({
-        url: `/v1/materials/${materialId}/analysis/doubts`,
-        query: { regenerate },
+      if (regenerate) {
+        // 手動觸發重新生成：一定要真的打 API 讓後端重新跑 AI 分析，不能吃快取。
+        // 生成完後把最新結果寫回快取，之後單純查看歷史紀錄才能直接拿到新版本。
+        const data = await requestDoubtAnalysis(materialId, true);
+        queryClient.setQueryData(queryKey, data);
+        return data;
+      }
+
+      // 單純查看歷史紀錄：短時間內重複查看同一份教材直接沿用快取；
+      // 資料變舊之後才在背景重新拉一次最新分析 (revalidateIfStale)。
+      return await queryClient.ensureQueryData({
+        queryKey,
+        queryFn: () => requestDoubtAnalysis(materialId, false),
+        revalidateIfStale: true,
       });
-      return response.data;
     } catch (err) {
       console.error("取得疑問分析失敗:", err);
       throw err;
