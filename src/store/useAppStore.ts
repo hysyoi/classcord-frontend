@@ -508,19 +508,41 @@ export const useAppStore = defineStore("app", () => {
     subscribeToActiveServer();
 
     try {
-      // 用 vue-query 快取頻道列表：短時間內切回同一個班級直接沿用快取、不必等網路。
+      // 頻道列表跟成員列表彼此沒有依賴關係，改成 Promise.all 同時發出去，
+      // 總等待時間變成「取兩者中較慢的那個」而不是兩趟網路來回相加。
+      // 用 vue-query 快取：短時間內切回同一個班級直接沿用快取、不必等網路。
       // ensureQueryData 預設「只要有快取就回傳，不管新不新鮮」，所以要另外加
       // revalidateIfStale: true，資料超過 staleTime 之後才會在背景默默重新拉一次
       // 最新結果 (這次仍先回傳舊快取，下次再切回來就會是更新過的)。
-      const res = await queryClient.ensureQueryData({
-        queryKey: ["channels", id],
-        queryFn: () =>
-          getChannels({
-            path: { serverId: id },
-            throwOnError: true,
-          }),
-        revalidateIfStale: true,
-      });
+      const membersKey = ["serverMembers", id];
+      const prevUpdatedAt =
+        queryClient.getQueryState(membersKey)?.dataUpdatedAt;
+
+      const [res, membersRes] = await Promise.all([
+        queryClient.ensureQueryData({
+          queryKey: ["channels", id],
+          queryFn: () =>
+            getChannels({
+              path: { serverId: id },
+              throwOnError: true,
+            }),
+          revalidateIfStale: true,
+        }),
+        // 取得成員列表以確認當前登入者身分角色 (用於 UI 按鈕判定)
+        // 「在線狀態」實際顯示邏輯 (MemberList.vue) 完全依賴 onlineUserIds 這個由
+        // /topic/presence 即時廣播維護的獨立集合，不吃 serverMembers 裡的 online 欄位，
+        // 所以快取名單本身是安全的。
+        queryClient.ensureQueryData({
+          queryKey: membersKey,
+          queryFn: () =>
+            getServerMembers({
+              path: { serverId: id },
+              throwOnError: true,
+            }),
+          revalidateIfStale: true,
+        }),
+      ]);
+
       if (isStillActiveServer()) {
         channels.value = (res.data || []).map((c: any) => ({
           id: c.id,
@@ -530,23 +552,6 @@ export const useAppStore = defineStore("app", () => {
         }));
       }
 
-      // 取得成員列表以確認當前登入者身分角色 (用於 UI 按鈕判定)
-      // 同樣用 vue-query 快取：名單內容 (姓名/角色/大頭貼) 短時間內切回不必重打 API。
-      // 但「在線狀態」實際顯示邏輯 (MemberList.vue) 完全依賴 onlineUserIds 這個由
-      // /topic/presence 即時廣播維護的獨立集合，不吃 serverMembers 裡的 online 欄位，
-      // 所以快取名單本身是安全的。
-      const membersKey = ["serverMembers", id];
-      const prevUpdatedAt =
-        queryClient.getQueryState(membersKey)?.dataUpdatedAt;
-      const membersRes = await queryClient.ensureQueryData({
-        queryKey: membersKey,
-        queryFn: () =>
-          getServerMembers({
-            path: { serverId: id },
-            throwOnError: true,
-          }),
-        revalidateIfStale: true,
-      });
       const wasFreshFetch =
         queryClient.getQueryState(membersKey)?.dataUpdatedAt !== prevUpdatedAt;
 
@@ -941,79 +946,89 @@ export const useAppStore = defineStore("app", () => {
       }
     }
 
-    // 取得教材詳細資料
+    // 教材詳情、會話列表、該會話的歷史訊息三者互不相依——materialId／sessionId
+    // 一開始就都知道了，不必等其他請求的結果才能發，改成 Promise.all 同時發出去，
+    // 三趟網路來回變成一趟(取最慢的那個)。
+    // 這裡也跟 selectAiSession 一樣記住這次的會話 ID：訊息那段用 vue-query 快取，
+    // AI 對話是一對一的，不會有其他使用者同時寫入同一個對話，沒有群組聊天那種
+    // 需要跟 WebSocket 同步的併發風險，可以直接套用最單純的快取版本；過程中
+    // 使用者完全可能在畫面上點了別的會話，這次呼叫就過期了，所以要另外判斷。
     isLoadingAiMaterial.value = true;
-    try {
-      const matRes = await getMaterial({
-        path: { materialId },
-        throwOnError: true,
-      });
-      if (matRes.data) {
-        aiMaterial.value = {
-          id: matRes.data.id || "",
-          originalName: matRes.data.originalName || "未知檔案",
-          fileType: matRes.data.fileType || "",
-          fileUrl: matRes.data.fileUrl || "",
-          status: matRes.data.status || "DISABLED",
-        };
-      }
-    } catch (e) {
-      console.error("從 URL 載入教材詳情失敗:", e);
-    } finally {
-      afterSkeletonDelay(() => {
-        isLoadingAiMaterial.value = false;
-      });
-    }
-
-    // 載入會話列表
     isLoadingAiSessions.value = true;
-    try {
-      const res = await listSessions({
-        query: { materialId },
-        throwOnError: true,
-      });
-      aiSessions.value = res.data || [];
-    } catch (err) {
-      console.error("從 URL 載入會話列表失敗:", err);
-    } finally {
-      afterSkeletonDelay(() => {
-        isLoadingAiSessions.value = false;
-      });
-    }
-
-    // 選定該會話並讀取訊息
-    // 用 vue-query 快取：AI 對話是一對一的，不會有其他使用者同時寫入同一個對話，
-    // 沒有群組聊天那種需要跟 WebSocket 同步的併發風險，可以直接套用最單純的快取版本。
-    // 這裡也跟 selectAiSession 一樣記住這次的會話 ID：這個函式本身已經有好幾個
-    // await，過程中使用者完全可能在畫面上點了別的會話，這次呼叫就過期了。
     activeAiSessionId.value = sessionId;
     const sessionIdAtSelect = sessionId;
     const isStillActiveSession = () =>
       activeAiSessionId.value === sessionIdAtSelect;
     isLoadingAiMessages.value = true;
-    try {
-      const data = await queryClient.ensureQueryData({
-        queryKey: ["aiSessionMessages", sessionId],
-        queryFn: async () => {
-          const res = await getSessionMessages({
-            path: { sessionId },
+
+    await Promise.all([
+      // 取得教材詳細資料
+      (async () => {
+        try {
+          const matRes = await getMaterial({
+            path: { materialId },
             throwOnError: true,
           });
-          return res.data || [];
-        },
-      });
-      if (isStillActiveSession()) {
-        aiMessages.value = [...data];
-      }
-    } catch (err) {
-      console.error("取得會話歷史訊息失敗:", err);
-    } finally {
-      afterSkeletonDelay(() => {
-        if (isStillActiveSession()) {
-          isLoadingAiMessages.value = false;
+          if (matRes.data) {
+            aiMaterial.value = {
+              id: matRes.data.id || "",
+              originalName: matRes.data.originalName || "未知檔案",
+              fileType: matRes.data.fileType || "",
+              fileUrl: matRes.data.fileUrl || "",
+              status: matRes.data.status || "DISABLED",
+            };
+          }
+        } catch (e) {
+          console.error("從 URL 載入教材詳情失敗:", e);
+        } finally {
+          afterSkeletonDelay(() => {
+            isLoadingAiMaterial.value = false;
+          });
         }
-      });
-    }
+      })(),
+      // 載入會話列表
+      (async () => {
+        try {
+          const res = await listSessions({
+            query: { materialId },
+            throwOnError: true,
+          });
+          aiSessions.value = res.data || [];
+        } catch (err) {
+          console.error("從 URL 載入會話列表失敗:", err);
+        } finally {
+          afterSkeletonDelay(() => {
+            isLoadingAiSessions.value = false;
+          });
+        }
+      })(),
+      // 選定該會話並讀取訊息
+      (async () => {
+        try {
+          const data = await queryClient.ensureQueryData({
+            queryKey: ["aiSessionMessages", sessionId],
+            queryFn: async () => {
+              const res = await getSessionMessages({
+                path: { sessionId },
+                throwOnError: true,
+              });
+              return res.data || [];
+            },
+          });
+          if (isStillActiveSession()) {
+            aiMessages.value = [...data];
+          }
+        } catch (err) {
+          console.error("取得會話歷史訊息失敗:", err);
+        } finally {
+          afterSkeletonDelay(() => {
+            if (isStillActiveSession()) {
+              isLoadingAiMessages.value = false;
+            }
+          });
+        }
+      })(),
+    ]);
   }
 
   function exitAiMode() {
