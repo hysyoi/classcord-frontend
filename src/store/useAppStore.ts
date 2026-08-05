@@ -536,7 +536,8 @@ export const useAppStore = defineStore("app", () => {
       // /topic/presence 即時廣播維護的獨立集合，不吃 serverMembers 裡的 online 欄位，
       // 所以快取名單本身是安全的。
       const membersKey = ["serverMembers", id];
-      const prevUpdatedAt = queryClient.getQueryState(membersKey)?.dataUpdatedAt;
+      const prevUpdatedAt =
+        queryClient.getQueryState(membersKey)?.dataUpdatedAt;
       const membersRes = await queryClient.ensureQueryData({
         queryKey: membersKey,
         queryFn: () =>
@@ -621,7 +622,8 @@ export const useAppStore = defineStore("app", () => {
     // 這次呼叫已經「過期」了，不能讓它事後才回來的結果去關掉使用者現在
     // 正在看的新頻道的載入骨架、或誤把使用者導回 @me。
     const channelIdAtSelect = id;
-    const isStillActiveChannel = () => activeChannelId.value === channelIdAtSelect;
+    const isStillActiveChannel = () =>
+      activeChannelId.value === channelIdAtSelect;
     if (activeServerId.value) {
       lastActiveChannelPerServer.value[activeServerId.value] = id;
     }
@@ -685,7 +687,10 @@ export const useAppStore = defineStore("app", () => {
       // 當權限不足 (403) 或頻道不存在 (404) 時，自動跳回 @me 頁面避免顯示異常空白
       // 但只有使用者還停留在這個 (有問題的) 頻道才導向；如果已經手動切去別的
       // 正常頻道，這次過期的錯誤不該把使用者導離他現在看得好好的畫面。
-      if ((err?.status === 403 || err?.status === 404) && isStillActiveChannel()) {
+      if (
+        (err?.status === 403 || err?.status === 404) &&
+        isStillActiveChannel()
+      ) {
         console.warn(`無權存取頻道 ${id}，重新導向至 /channels/@me`);
         router.push("/channels/@me");
       }
@@ -834,7 +839,8 @@ export const useAppStore = defineStore("app", () => {
     // 分開存)，如果使用者在下面這次 await 期間又點開別的教材，這次呼叫就過期了，
     // 不能讓它事後才回來的清單蓋掉使用者現在正在看的新教材的對話清單。
     const materialIdAtEnter = material.id;
-    const isStillActiveMaterial = () => aiMaterial.value?.id === materialIdAtEnter;
+    const isStillActiveMaterial = () =>
+      aiMaterial.value?.id === materialIdAtEnter;
 
     // 還原此教材的 Quiz 相關狀態
     activeQuiz.value = null; // 測驗進度退出即重來
@@ -982,7 +988,8 @@ export const useAppStore = defineStore("app", () => {
     // await，過程中使用者完全可能在畫面上點了別的會話，這次呼叫就過期了。
     activeAiSessionId.value = sessionId;
     const sessionIdAtSelect = sessionId;
-    const isStillActiveSession = () => activeAiSessionId.value === sessionIdAtSelect;
+    const isStillActiveSession = () =>
+      activeAiSessionId.value === sessionIdAtSelect;
     isLoadingAiMessages.value = true;
     try {
       const data = await queryClient.ensureQueryData({
@@ -1050,7 +1057,8 @@ export const useAppStore = defineStore("app", () => {
     // 別的對話，這次呼叫已經「過期」了，不能讓它事後才回來的結果蓋掉使用者
     // 現在正在看的新對話畫面。
     const sessionIdAtSelect = sessionId;
-    const isStillActiveSession = () => activeAiSessionId.value === sessionIdAtSelect;
+    const isStillActiveSession = () =>
+      activeAiSessionId.value === sessionIdAtSelect;
     aiMessages.value = [];
     isAiLoading.value = false;
     isQuizMode.value = false;

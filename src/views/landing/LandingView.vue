@@ -47,7 +47,7 @@
                 <br v-if="seg.type === 'br' && seg.reached" />
                 <span
                   v-else-if="seg.type === 'gradient'"
-                  class="hero-title-gradient"
+                  :class="heroTitleAccentClass"
                   >{{ seg.visible }}</span
                 >
                 <template v-else-if="seg.type === 'text'">{{
@@ -66,7 +66,7 @@
           <div class="hero-media">
             <Skeleton v-if="!heroVideoLoaded" class="media-skeleton" />
             <video
-              src="https://cdn-classcord.hys-lab.com/intro-blur.mp4"
+              src="https://cdn-classcord.hys-lab.com/page_intro_02.mp4"
               muted
               loop
               playsinline
@@ -185,13 +185,22 @@ import { afterSkeletonDelay } from "@/lib/debug";
 const router = useRouter();
 const authStore = useAuthStore();
 
+// Hero 標題「即時交流」的強調樣式：改這個值就能切換兩種效果
+// - "gradient"：原本的漸層文字填色
+// - "highlight"：新的螢光筆畫線效果
+const HERO_TITLE_ACCENT_STYLE: "gradient" | "highlight" = "gradient";
+const heroTitleAccentClass =
+  HERO_TITLE_ACCENT_STYLE === "gradient"
+    ? "hero-title-gradient"
+    : "hero-title-highlight";
+
 // Hero 標題打字機效果
 const titleSegments = [
   { type: "text", text: "學習，" },
   { type: "br" },
-  { type: "text", text: "如" },
-  { type: "gradient", text: " 即時交流 " },
-  { type: "text", text: "般" },
+  { type: "text", text: "如 " },
+  { type: "gradient", text: "即時交流" },
+  { type: "text", text: " 般" },
   { type: "br" },
   { type: "text", text: "簡單流暢" },
 ] as const;
@@ -476,7 +485,7 @@ const onFeatureVideoReady = (e: Event, index: number) => {
     var(--bg-surface-border) 10%,
     transparent
   );
-  margin: 24px 0 32px 0;
+  margin: 24px 0 56px 0;
   backdrop-filter: blur(2px);
   -webkit-backdrop-filter: blur(2px); /* 舊版 Safari 相容 */
 }
@@ -584,11 +593,25 @@ const onFeatureVideoReady = (e: Event, index: number) => {
 }
 
 .hero-title-gradient {
-  /*background: linear-gradient(to right, #60a5fa, #818cf8, #c084fc);*/
-  background: linear-gradient(to right, #365bff, #ff879a);
+  /* 原本的漸層文字填色效果 */
+  /* #002fff */ /* #365bff */ /* ff879a */
+  /*background: linear-gradient(to right, #4a7fd4, #e8548a);*/
+  background: linear-gradient(61deg, #1f7afe 0%, #b67fff 70%, #e9505e);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
+}
+
+.hero-title-highlight {
+  /* 螢光筆效果：色塊蓋住整個字高，文字本身半透明讓顏色透出來，
+     製造「螢光筆蓋在文字上」而不是「色塊只在文字底下」的感覺 */
+  /* rgba(255, 135, 154, 1) */ /* rgb(0 46 255), */
+  background-image: linear-gradient(to right, rgb(36 40 56), rgb(0 46 255));
+  color: rgba(255, 255, 255, 0.88);
+  background-repeat: no-repeat;
+  background-size: 100% 0.85em;
+  background-position: 0 55%;
+  padding: 0 0.06em;
 }
 
 .typing-cursor {
@@ -633,8 +656,9 @@ const onFeatureVideoReady = (e: Event, index: number) => {
 }
 
 .cta-primary-btn {
-  background-color: var(--primary);
-  color: #fff;
+  /*background-color: var(--primary);*/
+  background-color: #ffffff;
+  color: #000;
   font-weight: 600;
   padding: 0.875rem 2rem;
   border-radius: 9999px;
@@ -646,7 +670,8 @@ const onFeatureVideoReady = (e: Event, index: number) => {
 }
 
 .cta-primary-btn:hover {
-  background-color: var(--primary-muted);
+  /*background-color: var(--primary-muted);*/
+  background-color: #e2e8f0;
 }
 
 .cta-secondary-btn {
