@@ -231,6 +231,19 @@ onMounted(async () => {
   const timeout = new Promise((resolve) => setTimeout(resolve, 8000));
   await Promise.race([initialLoad, timeout]);
   isAppReady.value = true;
+
+  // 跨區延遲公告：只在使用者第一次進入主畫面時顯示一次，用 localStorage 記住已讀
+  // 之後若要讓所有人重新看到新一輪公告，把這個 key 改名（例如加上日期）即可
+  const LATENCY_NOTICE_KEY = "classcord-latency-notice-shown";
+  if (!window.localStorage.getItem(LATENCY_NOTICE_KEY)) {
+    store.showGlobalNotice(
+      "由於 Cloudflare Proxy 目前將部分連線導向較遠節點（美西 LA），與伺服器往返距離較長，" +
+        "可能會遇到略高於平常的延遲。",
+      "SYS_NETWORK_LATENCY",
+      "已知延遲說明",
+    );
+    window.localStorage.setItem(LATENCY_NOTICE_KEY, "1");
+  }
 });
 
 // 分頁標題：依目前選取的頻道 / 班級動態顯示，切換時即時更新

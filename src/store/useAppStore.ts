@@ -508,8 +508,7 @@ export const useAppStore = defineStore("app", () => {
     subscribeToActiveServer();
 
     try {
-      // 頻道列表跟成員列表彼此沒有依賴關係，改成 Promise.all 同時發出去，
-      // 總等待時間變成「取兩者中較慢的那個」而不是兩趟網路來回相加。
+      // 頻道列表跟成員列表互不相依，改用 Promise.all 平行發出。
       // 用 vue-query 快取：短時間內切回同一個班級直接沿用快取、不必等網路。
       // ensureQueryData 預設「只要有快取就回傳，不管新不新鮮」，所以要另外加
       // revalidateIfStale: true，資料超過 staleTime 之後才會在背景默默重新拉一次
@@ -946,9 +945,7 @@ export const useAppStore = defineStore("app", () => {
       }
     }
 
-    // 教材詳情、會話列表、該會話的歷史訊息三者互不相依——materialId／sessionId
-    // 一開始就都知道了，不必等其他請求的結果才能發，改成 Promise.all 同時發出去，
-    // 三趟網路來回變成一趟(取最慢的那個)。
+    // 教材詳情、會話列表、該會話的歷史訊息互不相依，改用 Promise.all 平行發出。
     // 這裡也跟 selectAiSession 一樣記住這次的會話 ID：訊息那段用 vue-query 快取，
     // AI 對話是一對一的，不會有其他使用者同時寫入同一個對話，沒有群組聊天那種
     // 需要跟 WebSocket 同步的併發風險，可以直接套用最單純的快取版本；過程中
