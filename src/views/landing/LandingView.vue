@@ -10,7 +10,7 @@
         <nav class="nav-links">
           <a href="#features">特色功能</a>
           <!-- <a href="#about">關於我們</a> -->
-          <a href="https://docs-classcord.hys-lab.com/" target="_blank"
+          <a href="https://docs-classcord.hys-lab.com/#00--亮點摘要" target="_blank"
             >技術文件</a
           >
           <a href="https://github.com/hysyoi/classcord-backend" target="_blank"
