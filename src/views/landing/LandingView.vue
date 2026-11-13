@@ -1,5 +1,9 @@
 <template>
-  <div class="landing-container" @scroll.passive="onLandingScroll">
+  <div
+    ref="landingRef"
+    class="landing-container"
+    @scroll.passive="onLandingScroll"
+  >
     <!-- 頂端漸進式模糊（參考 Screen Studio）：三層強度不同的背景模糊，
          各自用帶狀遮罩只顯示一段高度，疊起來就是「上面最模糊、往下逐漸清楚」 -->
     <div class="top-blur" aria-hidden="true">
@@ -41,10 +45,16 @@
 
     <!-- Navbar：位置固定；往下捲超過門檻後，右側的連結與按鈕浮現膠囊外觀，logo 維持在外 -->
     <header class="navbar" :class="{ 'navbar--floating': isNavFloating }">
-      <div class="logo" @click="router.push('/')">
+      <!-- 點 logo 平滑捲回頂端（本來就在首頁，跳轉網址不會有反應） -->
+      <a
+        href="/"
+        class="logo-link"
+        aria-label="Classcord，回到頂端"
+        @click.prevent="scrollToTop"
+      >
         <img class="logo" src="/favicon-cord-type1.svg" alt="" />
         <span class="logo-text"> Classcord </span>
-      </div>
+      </a>
       <div
         ref="pillRefEl"
         class="navbar-items"
@@ -234,10 +244,10 @@
                   <!-- AI 助教頭像：與 App 內 AI 助教使用同一張圖 -->
                   <img
                     v-if="msg.ai"
-                    src="/github_logo.png"
+                    src="/ai-assistant-avatar-80.webp"
                     alt=""
-                    width="40"
-                    height="40"
+                    width="80"
+                    height="80"
                     class="feature-quote-avatar ai-avatar"
                   />
                   <Avatar
@@ -249,10 +259,10 @@
                     class="feature-quote-avatar"
                   />
                   <div class="feature-quote-body">
-                    <figcaption class="feature-quote-meta">
+                    <div class="feature-quote-meta">
                       <span class="feature-quote-name">{{ msg.name }}</span>
                       <span class="role-tag">{{ msg.role }}</span>
-                    </figcaption>
+                    </div>
                     <!-- 看不見的副本先把最終大小佔好，泡泡變大時面板高度不會跳動 -->
                     <div class="feature-quote-bubble-wrap">
                       <div
@@ -402,10 +412,10 @@
             class="feature-quote-avatar"
           />
           <div class="feature-quote-body">
-            <figcaption class="feature-quote-meta">
+            <div class="feature-quote-meta">
               <!-- 彩蛋對話是群組閒聊，不標示身分 -->
               <span class="feature-quote-name">{{ msg.name }}</span>
-            </figcaption>
+            </div>
             <div class="feature-quote-bubble-wrap">
               <div
                 class="feature-quote-bubble feature-quote-bubble--ghost"
@@ -573,6 +583,25 @@ onMounted(() => {
 onBeforeUnmount(() => {
   if (heroWordTimer) clearTimeout(heroWordTimer);
 });
+
+// 首頁的捲動容器（整頁是在這個 div 裡捲動，不是 window）
+const landingRef = ref<HTMLElement | null>(null);
+
+const scrollToTop = () => {
+  const reduceMotion = window.matchMedia(
+    "(prefers-reduced-motion: reduce)",
+  ).matches;
+  landingRef.value?.scrollTo({
+    top: 0,
+    behavior: reduceMotion ? "auto" : "smooth",
+  });
+  // 拿掉網址上的錨點（例如 #features），重新整理或分享網址時才不會跳回那一區。
+  // 用 replaceState 替換目前這筆紀錄，「上一頁」不會多一步；
+  // 保留 history.state，vue-router 需要它記錄導航狀態
+  if (location.hash) {
+    history.replaceState(history.state, "", location.pathname + location.search);
+  }
+};
 
 // ===== 導覽列：捲動後浮現膠囊外觀 =====
 const NAV_FLOAT_AT = 80; // 往下捲超過幾 px 就浮現膠囊
@@ -1041,7 +1070,7 @@ onBeforeUnmount(() => {
 }
 
 .landing-container {
-  font-family: "GenSen Rounded 2 TW", var(--font-sans);
+  font-family: "GenSen Rounded 2 TW", var(--font-sans), sans-serif;
   /* 首頁底色：帶品牌藍調的近黑（亮度 4%，約 #08090d）。
      比原本的深藍（10%）暗很多，深藍面板浮得出來；
      又不用純黑：保留品牌色調、跟 App 介面接得起來，也避免 OLED 螢幕捲動時拖影 */
@@ -1093,11 +1122,14 @@ onBeforeUnmount(() => {
   z-index: 50;
 }
 
-.logo {
+/* logo 連結：外層用獨立的 class，避免被下方 .logo（圖示 24×24）縮小成只剩圖示大小的可點範圍 */
+.logo-link {
   display: flex;
   align-items: center;
   gap: 0.5rem;
   cursor: pointer;
+  color: inherit;
+  text-decoration: none;
 }
 
 @font-face {
@@ -1745,7 +1777,7 @@ onBeforeUnmount(() => {
   visibility: hidden;
 }
 
-/* AI 助教頭像：圓形裁切 */
+/* AI 助教頭像：圖片是 80×80（HTML 屬性寫真實尺寸），這裡縮成 40×40 顯示，Retina 螢幕上才清楚 */
 .ai-avatar {
   width: 40px;
   height: 40px;
