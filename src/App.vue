@@ -1,10 +1,12 @@
 <template>
   <router-view />
   <GlobalNoticeModal />
+  <SlowRequestNotice />
 </template>
 
 <script lang="ts" setup>
 import GlobalNoticeModal from "@/components/GlobalNoticeModal.vue";
+import SlowRequestNotice from "@/components/SlowRequestNotice.vue";
 // 根組件，所有子頁面透過 Vue Router 渲染
 </script>
 

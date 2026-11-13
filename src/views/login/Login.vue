@@ -79,8 +79,18 @@
             />
           </div>
 
-          <Button :disabled="!turnstileToken" type="submit" class="submit-btn">
-            {{ turnstileToken ? "登入" : "Cloudflare Turnstile 驗證中..." }}
+          <Button
+            :disabled="isLoading || !turnstileToken"
+            type="submit"
+            class="submit-btn"
+          >
+            {{
+              isLoading
+                ? "登入中..."
+                : turnstileToken
+                  ? "登入"
+                  : "Cloudflare Turnstile 驗證中..."
+            }}
           </Button>
         </form>
       </CardContent>
@@ -197,6 +207,8 @@ const email = ref("");
 const password = ref("");
 const showPassword = ref(false);
 const errorMessage = ref("");
+// 送出中：鎖住登入按鈕，避免伺服器較慢時重複送出
+const isLoading = ref(false);
 const errors = ref({
   email: "",
   password: "",
@@ -267,8 +279,9 @@ const validate = () => {
 // 處理一般密碼登入
 const handleLogin = async () => {
   errorMessage.value = "";
-  if (!validate()) return;
+  if (!validate() || isLoading.value) return;
 
+  isLoading.value = true;
   try {
     await authStore.login(email.value, password.value, turnstileToken.value);
     const redirect = (route.query.redirect as string) || "/channels/@me";
@@ -289,6 +302,8 @@ const handleLogin = async () => {
       errorMessage.value =
         err?.body?.message || "登入失敗，請檢查電子信箱與密碼是否正確";
     }
+  } finally {
+    isLoading.value = false;
   }
 };
 
