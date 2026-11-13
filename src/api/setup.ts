@@ -25,3 +25,15 @@ client.interceptors.response.use((response: Response) => {
   }
   return response;
 });
+
+// 3. 錯誤攔截器：統一錯誤物件格式
+// 產生的 client 在後端回錯誤時，會把回應 JSON（{ message, code, status, errors }）直接丟出，
+// 但專案內多處以 err.body.message 讀取，導致永遠讀不到後端訊息、只能顯示寫死的預設文字。
+// 這裡把錯誤包成 { ...原欄位, body, status }：err.body.message 讀得到，原本的 err.status 寫法也照常可用。
+client.interceptors.error.use((error, response) => {
+  // 沒有 response 代表請求根本沒送達（網路中斷、逾時取消），維持原樣交給呼叫端判斷
+  if (!response) return error;
+  // 非 JSON 的錯誤（例如 Nginx 回的 502 HTML 頁）不當成訊息顯示，讓呼叫端使用預設文字
+  const body = typeof error === "object" && error !== null ? error : {};
+  return { ...body, body, status: response.status };
+});

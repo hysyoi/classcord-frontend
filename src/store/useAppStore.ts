@@ -815,14 +815,30 @@ export const useAppStore = defineStore("app", () => {
     try {
       await enableAiAssistant({
         path: { materialId },
-        signal: AbortSignal.timeout(10000),
+        signal: AbortSignal.timeout(30000),
         throwOnError: true,
       });
-    } catch (err) {
+    } catch (err: any) {
       console.error(`開啟 AI 助教失敗，教材 ID: ${materialId}`, err);
-      alert("啟用 AI 助教失敗，您可能權限不足或連線逾時，請再試一次。");
 
-      // 請求失敗或逾時，還原本地狀態讓按鈕恢復可點擊
+      // 逾時：後端可能其實已經受理（主機忙碌時回應較慢），完成後會透過 WebSocket 推送狀態，
+      // 因此維持「處理中」、不讓使用者重複點擊，避免觸發 409 重複請求
+      if (err?.name === "TimeoutError") {
+        alert(
+          "伺服器回應較慢，AI 助教可能仍在啟用中，請稍候片刻後重新整理確認，避免重複點擊。",
+        );
+        return;
+      }
+
+      // 409：該教材已在處理中，同樣維持「處理中」狀態
+      if (err?.status === 409) {
+        alert(err?.body?.message || "該教材 AI 助教正在啟用處理中，請稍候。");
+        return;
+      }
+
+      alert(err?.body?.message || "啟用 AI 助教失敗，請稍後再試。");
+
+      // 其他失敗才還原本地狀態，讓按鈕恢復可點擊
       const mat = findMaterial();
       if (mat) mat.status = previousStatus;
     }
@@ -1195,7 +1211,17 @@ export const useAppStore = defineStore("app", () => {
             if (e.message === "AI_LIMIT_EXCEEDED") throw e;
           }
         }
-        throw new Error(`HTTP error! status: ${response.status}`);
+        // 其他錯誤：盡量讀出後端回傳的 message，讓使用者看到真正原因
+        const httpError: Error & { backendMessage?: string } = new Error(
+          `HTTP error! status: ${response.status}`,
+        );
+        try {
+          const errBody = await response.json();
+          if (errBody?.message) httpError.backendMessage = errBody.message;
+        } catch {
+          // 回應不是 JSON（例如 502 HTML 頁），使用預設訊息
+        }
+        throw httpError;
       }
 
       const reader = response.body?.getReader();
@@ -1288,7 +1314,9 @@ export const useAppStore = defineStore("app", () => {
       }
     } catch (err: any) {
       console.error("AI 流式對話失敗:", err);
-      let displayContent = "⚠️ 發送失敗，請確認網路連線或稍後再試。";
+      let displayContent = err.backendMessage
+        ? `⚠️ ${err.backendMessage}`
+        : "⚠️ 發送失敗，請確認網路連線或稍後再試。";
       if (err.message === "AI_LIMIT_EXCEEDED") {
         isAiLimitDialogOpen.value = true;
         displayContent = "⚠️ 本日全站 AI 額度已耗盡，請明天再試。";
